@@ -1,0 +1,394 @@
+:root {
+  --bg: #1A1B1E;
+  --bg-elevado: #232428;
+  --bg-elevado-2: #2B2C31;
+  --borda: #33343A;
+  --texto: #E8E6E1;
+  --texto-mudo: #9B9894;
+  --ambar: #D4A24C;
+  --teal: #4A8B8B;
+  --clay: #C1666B;
+  --fonte-display: Georgia, 'Times New Roman', serif;
+  --fonte-ui: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --fonte-mono: ui-monospace, 'SF Mono', 'Cascadia Code', 'JetBrains Mono', monospace;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg);
+  color: var(--texto);
+  font-family: var(--fonte-ui);
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  padding-bottom: 96px;
+  min-height: 100vh;
+}
+
+button {
+  font-family: inherit;
+}
+
+/* ---------- TOPBAR ---------- */
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: calc(env(safe-area-inset-top, 0px) + 14px) 12px 14px;
+  border-bottom: 1px solid var(--borda);
+  position: sticky;
+  top: 0;
+  background: var(--bg);
+  z-index: 10;
+}
+
+.mes-atual {
+  font-family: var(--fonte-display);
+  font-size: 19px;
+  letter-spacing: 0.02em;
+  flex: 1;
+  text-align: center;
+}
+
+.icon-btn {
+  background: none;
+  border: none;
+  color: var(--texto);
+  font-size: 22px;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.icon-btn:active {
+  background: var(--bg-elevado);
+}
+
+.config-btn {
+  font-size: 17px;
+  color: var(--texto-mudo);
+}
+
+/* ---------- MAIN ---------- */
+
+main {
+  padding: 16px;
+  max-width: 520px;
+  margin: 0 auto;
+}
+
+.secao-titulo {
+  font-family: var(--fonte-display);
+  font-size: 15px;
+  font-weight: normal;
+  color: var(--texto-mudo);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin: 28px 0 12px;
+}
+
+/* ---------- RESUMO ---------- */
+
+.resumo-card {
+  background: var(--bg-elevado);
+  border: 1px solid var(--borda);
+  border-radius: 14px;
+  padding: 18px 20px;
+}
+
+.resumo-linha {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 6px 0;
+}
+
+.resumo-label {
+  color: var(--texto-mudo);
+  font-size: 14px;
+}
+
+.resumo-valor {
+  font-family: var(--fonte-mono);
+  font-size: 16px;
+  font-variant-numeric: tabular-nums;
+}
+
+.valor-entrada { color: var(--teal); }
+.valor-saida { color: var(--clay); }
+
+.resumo-divisor {
+  height: 1px;
+  background: var(--borda);
+  margin: 8px 0;
+}
+
+.resumo-saldo .resumo-label {
+  color: var(--texto);
+  font-weight: 600;
+}
+
+.resumo-saldo .resumo-valor {
+  font-family: var(--fonte-display);
+  font-size: 22px;
+}
+
+/* ---------- CATEGORIAS (ledger ruler) ---------- */
+
+.lista-categorias {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.categoria-card {
+  background: var(--bg-elevado);
+  border: 1px solid var(--borda);
+  border-radius: 12px;
+  padding: 14px 16px;
+}
+
+.categoria-topo {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 10px;
+}
+
+.categoria-nome {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.categoria-valores {
+  font-family: var(--fonte-mono);
+  font-size: 13px;
+  color: var(--texto-mudo);
+  font-variant-numeric: tabular-nums;
+}
+
+.ruler {
+  position: relative;
+  height: 20px;
+}
+
+.ruler-trilho {
+  position: absolute;
+  top: 8px;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: var(--bg-elevado-2);
+  border-radius: 2px;
+  overflow: visible;
+}
+
+.ruler-preenchimento {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  border-radius: 2px;
+  background: var(--ambar);
+  transition: width 0.3s ease;
+}
+
+.ruler-preenchimento.estourado {
+  background: var(--clay);
+}
+
+.ruler-marcas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 20px;
+  display: flex;
+  justify-content: space-between;
+  pointer-events: none;
+}
+
+.ruler-marcas span {
+  width: 1px;
+  height: 20px;
+  background: var(--borda);
+}
+
+/* ---------- LANÇAMENTOS ---------- */
+
+.lista-lancamentos {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  background: var(--borda);
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid var(--borda);
+}
+
+.lancamento-item {
+  background: var(--bg-elevado);
+  padding: 12px 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.lancamento-info {
+  min-width: 0;
+}
+
+.lancamento-desc {
+  font-size: 14px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.lancamento-meta {
+  font-size: 12px;
+  color: var(--texto-mudo);
+  margin-top: 2px;
+}
+
+.lancamento-valor {
+  font-family: var(--fonte-mono);
+  font-size: 14px;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.estado-vazio {
+  color: var(--texto-mudo);
+  font-size: 14px;
+  text-align: center;
+  padding: 24px 0;
+}
+
+/* ---------- FAB ---------- */
+
+.fab {
+  position: fixed;
+  right: 20px;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 24px);
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--ambar);
+  color: #1A1B1E;
+  border: none;
+  font-size: 28px;
+  line-height: 1;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.4);
+  cursor: pointer;
+}
+
+.fab:active {
+  transform: scale(0.96);
+}
+
+/* ---------- MODAIS ---------- */
+
+dialog {
+  background: var(--bg-elevado);
+  color: var(--texto);
+  border: 1px solid var(--borda);
+  border-radius: 16px;
+  padding: 22px;
+  width: min(420px, 90vw);
+}
+
+dialog::backdrop {
+  background: rgba(0,0,0,0.6);
+}
+
+dialog h3 {
+  font-family: var(--fonte-display);
+  margin: 0 0 6px;
+  font-size: 20px;
+}
+
+.config-explicacao {
+  color: var(--texto-mudo);
+  font-size: 13px;
+  margin: 0 0 16px;
+}
+
+dialog label {
+  display: block;
+  font-size: 13px;
+  color: var(--texto-mudo);
+  margin-top: 14px;
+}
+
+dialog input, dialog select {
+  width: 100%;
+  margin-top: 6px;
+  padding: 10px 12px;
+  background: var(--bg-elevado-2);
+  border: 1px solid var(--borda);
+  border-radius: 8px;
+  color: var(--texto);
+  font-size: 15px;
+  font-family: inherit;
+}
+
+dialog input:focus, dialog select:focus {
+  outline: 2px solid var(--ambar);
+  outline-offset: 1px;
+}
+
+.modal-botoes {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 22px;
+}
+
+.btn-primario, .btn-secundario {
+  padding: 10px 18px;
+  border-radius: 8px;
+  font-size: 14px;
+  border: none;
+  cursor: pointer;
+}
+
+.btn-primario {
+  background: var(--ambar);
+  color: #1A1B1E;
+  font-weight: 600;
+}
+
+.btn-secundario {
+  background: transparent;
+  color: var(--texto-mudo);
+  border: 1px solid var(--borda);
+}
+
+/* ---------- TOAST ---------- */
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 100px;
+  transform: translateX(-50%);
+  background: var(--bg-elevado-2);
+  border: 1px solid var(--borda);
+  color: var(--texto);
+  padding: 10px 18px;
+  border-radius: 10px;
+  font-size: 13px;
+  z-index: 50;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ruler-preenchimento { transition: none; }
+  .fab:active { transform: none; }
+}

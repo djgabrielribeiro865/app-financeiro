@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1A1B1E">
+<title>Controle Financeiro</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="topbar">
+  <button id="btnMesAnterior" class="icon-btn" aria-label="Mês anterior">‹</button>
+  <div class="mes-atual">
+    <span id="labelMes">Julho 2026</span>
+  </div>
+  <button id="btnMesProximo" class="icon-btn" aria-label="Próximo mês">›</button>
+  <button id="btnConfig" class="icon-btn config-btn" aria-label="Configurações">⚙</button>
+</header>
+
+<main>
+  <section class="resumo-card">
+    <div class="resumo-linha">
+      <span class="resumo-label">Entradas</span>
+      <span class="resumo-valor valor-entrada" id="totalEntradas">R$ 0,00</span>
+    </div>
+    <div class="resumo-linha">
+      <span class="resumo-label">Saídas</span>
+      <span class="resumo-valor valor-saida" id="totalSaidas">R$ 0,00</span>
+    </div>
+    <div class="resumo-divisor"></div>
+    <div class="resumo-linha resumo-saldo">
+      <span class="resumo-label">Saldo do mês</span>
+      <span class="resumo-valor" id="saldoMes">R$ 0,00</span>
+    </div>
+  </section>
+
+  <h2 class="secao-titulo">Orçamento por categoria</h2>
+
+  <section id="listaCategorias" class="lista-categorias">
+    <p class="estado-vazio" id="estadoCarregando">Carregando...</p>
+  </section>
+
+  <h2 class="secao-titulo">Últimos lançamentos</h2>
+  <section id="listaLancamentos" class="lista-lancamentos"></section>
+</main>
+
+<button id="btnNovoLancamento" class="fab" aria-label="Novo lançamento">+</button>
+
+<!-- Modal: novo lançamento -->
+<dialog id="modalLancamento">
+  <form id="formLancamento" method="dialog">
+    <h3>Novo lançamento</h3>
+
+    <label>Data
+      <input type="date" id="campoData" required>
+    </label>
+
+    <label>Tipo
+      <select id="campoTipo" required>
+        <option value="Saída">Saída</option>
+        <option value="Entrada">Entrada</option>
+      </select>
+    </label>
+
+    <label>Categoria
+      <select id="campoCategoria" required></select>
+    </label>
+
+    <label>Descrição
+      <input type="text" id="campoDescricao" placeholder="Ex: Supermercado">
+    </label>
+
+    <label>Valor
+      <input type="number" id="campoValor" step="0.01" min="0" required placeholder="0,00">
+    </label>
+
+    <div class="modal-botoes">
+      <button type="button" id="btnCancelarLancamento" class="btn-secundario">Cancelar</button>
+      <button type="submit" id="btnSalvarLancamento" class="btn-primario">Salvar</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- Modal: configuração da API -->
+<dialog id="modalConfig">
+  <form id="formConfig" method="dialog">
+    <h3>Conexão com a planilha</h3>
+    <p class="config-explicacao">Cole a URL do seu Apps Script e o token gerado nele.</p>
+
+    <label>URL da API
+      <input type="url" id="campoApiUrl" placeholder="https://script.google.com/macros/s/.../exec" required>
+    </label>
+
+    <label>Token
+      <input type="text" id="campoApiToken" required>
+    </label>
+
+    <div class="modal-botoes">
+      <button type="button" id="btnCancelarConfig" class="btn-secundario">Cancelar</button>
+      <button type="submit" class="btn-primario">Salvar</button>
+    </div>
+  </form>
+</dialog>
+
+<div id="toast" class="toast" hidden></div>
+
+<script src="app.js"></script>
+</body>
+</html>
