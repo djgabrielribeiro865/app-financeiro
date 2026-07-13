@@ -1,4 +1,4 @@
-const CACHE_NAME = 'controle-financeiro-v1';
+const CACHE_NAME = 'controle-financeiro-v2';
 const ARQUIVOS_SHELL = [
   './',
   './index.html',
@@ -33,7 +33,16 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  // Network-first: sempre tenta buscar a versão mais nova primeiro.
+  // Só usa o cache se estiver offline. Assim, atualizações no GitHub
+  // aparecem no app automaticamente na próxima vez que abrir com internet.
   event.respondWith(
-    caches.match(event.request).then((resposta) => resposta || fetch(event.request))
+    fetch(event.request)
+      .then((resposta) => {
+        const copia = resposta.clone();
+        caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copia));
+        return resposta;
+      })
+      .catch(() => caches.match(event.request))
   );
 });
