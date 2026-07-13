@@ -40,10 +40,7 @@
     </div>
   </section>
 
-  <div class="secao-cabecalho">
-    <h2 class="secao-titulo">Orçamento por categoria</h2>
-    <button id="btnGerenciarCategorias" class="link-btn">Gerenciar</button>
-  </div>
+  <h2 class="secao-titulo">Orçamento por categoria</h2>
 
   <section id="listaCategorias" class="lista-categorias">
     <p class="estado-vazio" id="estadoCarregando">Carregando...</p>
@@ -71,9 +68,11 @@
       </select>
     </label>
 
-    <label>Categoria
-      <select id="campoCategoria" required></select>
-    </label>
+    <div class="campo-linha-categoria">
+      <label for="campoCategoria">Categoria</label>
+      <button type="button" id="btnGerenciarCategorias" class="link-btn">Gerenciar</button>
+    </div>
+    <select id="campoCategoria" required></select>
 
     <label>Descrição
       <input type="text" id="campoDescricao" placeholder="Ex: Supermercado">

@@ -93,16 +93,6 @@ main {
   margin: 28px 0 12px;
 }
 
-.secao-cabecalho {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-}
-
-.secao-cabecalho .secao-titulo {
-  margin-bottom: 12px;
-}
-
 .link-btn {
   background: none;
   border: none;
@@ -345,6 +335,21 @@ dialog label {
   font-size: 13px;
   color: var(--texto-mudo);
   margin-top: 14px;
+}
+
+.campo-linha-categoria {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-top: 14px;
+}
+
+.campo-linha-categoria label {
+  margin-top: 0;
+}
+
+.campo-linha-categoria .link-btn {
+  padding: 0;
 }
 
 dialog input, dialog select {
