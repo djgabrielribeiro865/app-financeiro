@@ -40,7 +40,10 @@
     </div>
   </section>
 
-  <h2 class="secao-titulo">Orçamento por categoria</h2>
+  <div class="secao-cabecalho">
+    <h2 class="secao-titulo">Orçamento por categoria</h2>
+    <button id="btnGerenciarCategorias" class="link-btn">Gerenciar</button>
+  </div>
 
   <section id="listaCategorias" class="lista-categorias">
     <p class="estado-vazio" id="estadoCarregando">Carregando...</p>
@@ -83,6 +86,32 @@
     <div class="modal-botoes">
       <button type="button" id="btnCancelarLancamento" class="btn-secundario">Cancelar</button>
       <button type="submit" id="btnSalvarLancamento" class="btn-primario">Salvar</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- Modal: gerenciar categorias -->
+<dialog id="modalCategorias">
+  <h3>Categorias</h3>
+
+  <div id="listaCategoriasModal" class="lista-categorias-modal"></div>
+
+  <form id="formNovaCategoria" class="form-nova-categoria">
+    <label>Nome
+      <input type="text" id="novaCategoriaNome" placeholder="Ex: Mercado" required>
+    </label>
+    <label>Tipo
+      <select id="novaCategoriaTipo">
+        <option value="Variável">Variável</option>
+        <option value="Fixo">Fixo</option>
+      </select>
+    </label>
+    <label>Valor planejado mensal
+      <input type="number" id="novaCategoriaValor" step="0.01" min="0" placeholder="0,00" required>
+    </label>
+    <div class="modal-botoes">
+      <button type="button" id="btnFecharCategorias" class="btn-secundario">Fechar</button>
+      <button type="submit" class="btn-primario">Adicionar categoria</button>
     </div>
   </form>
 </dialog>

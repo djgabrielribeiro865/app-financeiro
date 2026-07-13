@@ -18,6 +18,7 @@ const saldoMesEl = document.getElementById('saldoMes');
 
 const modalLancamento = document.getElementById('modalLancamento');
 const modalConfig = document.getElementById('modalConfig');
+const modalCategorias = document.getElementById('modalCategorias');
 const toast = document.getElementById('toast');
 
 // ---------- INIT ----------
@@ -45,6 +46,8 @@ document.getElementById('btnMesProximo').addEventListener('click', () => {
 });
 
 document.getElementById('btnConfig').addEventListener('click', abrirModalConfig);
+document.getElementById('btnGerenciarCategorias').addEventListener('click', abrirModalCategorias);
+document.getElementById('btnFecharCategorias').addEventListener('click', () => modalCategorias.close());
 document.getElementById('btnNovoLancamento').addEventListener('click', abrirModalLancamento);
 document.getElementById('btnCancelarLancamento').addEventListener('click', () => modalLancamento.close());
 document.getElementById('btnCancelarConfig').addEventListener('click', () => modalConfig.close());
@@ -72,6 +75,25 @@ document.getElementById('formLancamento').addEventListener('submit', async (e) =
     carregarTudo();
   } else {
     mostrarToast('Erro ao salvar. Confira a conexão.');
+  }
+});
+
+document.getElementById('formNovaCategoria').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const dados = {
+    Nome: document.getElementById('novaCategoriaNome').value.trim(),
+    Tipo: document.getElementById('novaCategoriaTipo').value,
+    'Valor planejado mensal': parseFloat(document.getElementById('novaCategoriaValor').value || '0')
+  };
+  if (!dados.Nome) return;
+
+  const ok = await chamarApiPost('criarCategoria', { dados });
+  if (ok) {
+    mostrarToast('Categoria adicionada');
+    document.getElementById('formNovaCategoria').reset();
+    await recarregarCategorias();
+  } else {
+    mostrarToast('Erro ao adicionar categoria');
   }
 });
 
@@ -225,6 +247,59 @@ function abrirModalConfig() {
   document.getElementById('campoApiUrl').value = apiUrl;
   document.getElementById('campoApiToken').value = apiToken;
   modalConfig.showModal();
+}
+
+async function abrirModalCategorias() {
+  modalCategorias.showModal();
+  await recarregarCategorias();
+}
+
+async function recarregarCategorias() {
+  const categorias = await chamarApiGet('categorias');
+  if (categorias) {
+    categoriasCache = categorias;
+    preencherSelectCategorias(categorias);
+    renderListaCategoriasModal(categorias);
+  }
+  // Atualiza também os cards de orçamento do mês, já que os planejados podem ter mudado
+  const mes = mesFormatado();
+  const resumo = await chamarApiGet('resumo', { mes });
+  if (resumo) renderResumo(resumo);
+}
+
+function renderListaCategoriasModal(categorias) {
+  const container = document.getElementById('listaCategoriasModal');
+  if (!categorias || categorias.length === 0) {
+    container.innerHTML = '<p class="estado-vazio">Nenhuma categoria ainda.</p>';
+    return;
+  }
+  container.innerHTML = '';
+  categorias.forEach(cat => {
+    const div = document.createElement('div');
+    div.className = 'categoria-modal-item';
+    div.innerHTML = `
+      <div class="categoria-modal-info">
+        <div class="categoria-modal-nome">${cat.Nome}</div>
+        <div class="categoria-modal-meta">${cat.Tipo} · ${formatarMoeda(cat['Valor planejado mensal'])}</div>
+      </div>
+      <button class="btn-excluir-categoria" data-nome="${cat.Nome}">Excluir</button>
+    `;
+    container.appendChild(div);
+  });
+
+  container.querySelectorAll('.btn-excluir-categoria').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const nome = btn.dataset.nome;
+      if (!confirm(`Excluir a categoria "${nome}"? Os lançamentos já feitos nela não serão apagados.`)) return;
+      const ok = await chamarApiPost('excluirCategoria', { nome });
+      if (ok) {
+        mostrarToast('Categoria excluída');
+        await recarregarCategorias();
+      } else {
+        mostrarToast('Erro ao excluir categoria');
+      }
+    });
+  });
 }
 
 function abrirModalLancamento() {
