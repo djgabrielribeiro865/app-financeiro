@@ -15,76 +15,43 @@
 <body>
 
 <header class="topbar">
-  <button id="btnMesAnterior" class="icon-btn" aria-label="Mês anterior">‹</button>
+  <button id="btnAnoAnterior" class="icon-btn" aria-label="Ano anterior">‹</button>
   <div class="mes-atual">
-    <span id="labelMes">Julho 2026</span>
+    <span id="labelAno">2026</span>
   </div>
-  <button id="btnMesProximo" class="icon-btn" aria-label="Próximo mês">›</button>
+  <button id="btnAnoProximo" class="icon-btn" aria-label="Próximo ano">›</button>
+  <button id="btnNovoAno" class="icon-btn" aria-label="Criar novo ano">+</button>
   <button id="btnConfig" class="icon-btn config-btn" aria-label="Configurações">⚙</button>
 </header>
 
 <main>
-  <section class="resumo-card">
-    <div class="resumo-linha">
-      <span class="resumo-label">Entradas</span>
-      <span class="resumo-valor valor-entrada" id="totalEntradas">R$ 0,00</span>
-    </div>
-    <div class="resumo-linha">
-      <span class="resumo-label">Saídas</span>
-      <span class="resumo-valor valor-saida" id="totalSaidas">R$ 0,00</span>
-    </div>
-    <div class="resumo-divisor"></div>
-    <div class="resumo-linha resumo-saldo">
-      <span class="resumo-label">Saldo do mês</span>
-      <span class="resumo-valor" id="saldoMes">R$ 0,00</span>
-    </div>
-  </section>
+  <div class="grade-cabecalho">
+    <h2 class="secao-titulo">Lançamentos do ano</h2>
+    <button id="btnGerenciarCategorias" class="link-btn">Categorias</button>
+  </div>
 
-  <h2 class="secao-titulo">Orçamento por categoria</h2>
-
-  <section id="listaCategorias" class="lista-categorias">
-    <p class="estado-vazio" id="estadoCarregando">Carregando...</p>
-  </section>
-
-  <h2 class="secao-titulo">Últimos lançamentos</h2>
-  <section id="listaLancamentos" class="lista-lancamentos"></section>
+  <div id="gradeContainer" class="grade-wrapper">
+    <p class="estado-vazio">Carregando...</p>
+  </div>
 </main>
 
-<button id="btnNovoLancamento" class="fab" aria-label="Novo lançamento">+</button>
+<!-- Modal: criar novo ano -->
+<dialog id="modalNovoAno">
+  <form id="formNovoAno" method="dialog">
+    <h3>Criar ano <span id="labelNovoAno"></span></h3>
 
-<!-- Modal: novo lançamento -->
-<dialog id="modalLancamento">
-  <form id="formLancamento" method="dialog">
-    <h3>Novo lançamento</h3>
-
-    <label>Data
-      <input type="date" id="campoData" required>
+    <label class="opcao-radio">
+      <input type="radio" name="modoNovoAno" value="copiar" checked>
+      Copiar categorias e lançamentos do ano atual
     </label>
-
-    <label>Tipo
-      <select id="campoTipo" required>
-        <option value="Saída">Saída</option>
-        <option value="Entrada">Entrada</option>
-      </select>
-    </label>
-
-    <div class="campo-linha-categoria">
-      <label for="campoCategoria">Categoria</label>
-      <button type="button" id="btnGerenciarCategorias" class="link-btn">Gerenciar</button>
-    </div>
-    <select id="campoCategoria" required></select>
-
-    <label>Descrição
-      <input type="text" id="campoDescricao" placeholder="Ex: Supermercado">
-    </label>
-
-    <label>Valor
-      <input type="number" id="campoValor" step="0.01" min="0" required placeholder="0,00">
+    <label class="opcao-radio">
+      <input type="radio" name="modoNovoAno" value="zerado">
+      Criar estrutura zerada (só as categorias)
     </label>
 
     <div class="modal-botoes">
-      <button type="button" id="btnCancelarLancamento" class="btn-secundario">Cancelar</button>
-      <button type="submit" id="btnSalvarLancamento" class="btn-primario">Salvar</button>
+      <button type="button" id="btnCancelarNovoAno" class="btn-secundario">Cancelar</button>
+      <button type="submit" class="btn-primario">Criar</button>
     </div>
   </form>
 </dialog>
@@ -101,8 +68,8 @@
     </label>
     <label>Tipo
       <select id="novaCategoriaTipo">
-        <option value="Variável">Variável</option>
-        <option value="Fixo">Fixo</option>
+        <option value="Saída">Saída</option>
+        <option value="Entrada">Entrada</option>
       </select>
     </label>
     <label>Valor planejado mensal

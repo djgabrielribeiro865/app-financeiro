@@ -2,23 +2,21 @@
 
 let apiUrl = localStorage.getItem('apiUrl') || '';
 let apiToken = localStorage.getItem('apiToken') || '';
-let mesAtual = new Date();
+let anoAtual = new Date().getFullYear();
+let anosDisponiveis = [];
 let categoriasCache = [];
+let gradeAtual = null;
 
-const NOMES_MES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+const NOMES_MES_ABREV = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
 
 // ---------- ELEMENTOS ----------
 
-const labelMes = document.getElementById('labelMes');
-const listaCategorias = document.getElementById('listaCategorias');
-const listaLancamentos = document.getElementById('listaLancamentos');
-const totalEntradasEl = document.getElementById('totalEntradas');
-const totalSaidasEl = document.getElementById('totalSaidas');
-const saldoMesEl = document.getElementById('saldoMes');
+const labelAno = document.getElementById('labelAno');
+const gradeContainer = document.getElementById('gradeContainer');
 
-const modalLancamento = document.getElementById('modalLancamento');
 const modalConfig = document.getElementById('modalConfig');
 const modalCategorias = document.getElementById('modalCategorias');
+const modalNovoAno = document.getElementById('modalNovoAno');
 const toast = document.getElementById('toast');
 
 // ---------- INIT ----------
@@ -35,21 +33,27 @@ window.addEventListener('DOMContentLoaded', () => {
   }
 });
 
-document.getElementById('btnMesAnterior').addEventListener('click', () => {
-  mesAtual.setMonth(mesAtual.getMonth() - 1);
-  carregarTudo();
+document.getElementById('btnAnoAnterior').addEventListener('click', () => {
+  const minAno = anosDisponiveis.length ? Math.min(...anosDisponiveis) : anoAtual;
+  if (anoAtual > minAno) {
+    anoAtual--;
+    carregarGrade();
+  }
 });
 
-document.getElementById('btnMesProximo').addEventListener('click', () => {
-  mesAtual.setMonth(mesAtual.getMonth() + 1);
-  carregarTudo();
+document.getElementById('btnAnoProximo').addEventListener('click', () => {
+  const maxAno = anosDisponiveis.length ? Math.max(...anosDisponiveis) : anoAtual - 1;
+  if (anoAtual < maxAno + 1) {
+    anoAtual++;
+    carregarGrade();
+  }
 });
 
 document.getElementById('btnConfig').addEventListener('click', abrirModalConfig);
 document.getElementById('btnGerenciarCategorias').addEventListener('click', abrirModalCategorias);
 document.getElementById('btnFecharCategorias').addEventListener('click', () => modalCategorias.close());
-document.getElementById('btnNovoLancamento').addEventListener('click', abrirModalLancamento);
-document.getElementById('btnCancelarLancamento').addEventListener('click', () => modalLancamento.close());
+document.getElementById('btnNovoAno').addEventListener('click', abrirModalNovoAno);
+document.getElementById('btnCancelarNovoAno').addEventListener('click', () => modalNovoAno.close());
 document.getElementById('btnCancelarConfig').addEventListener('click', () => modalConfig.close());
 
 document.getElementById('formConfig').addEventListener('submit', (e) => {
@@ -61,29 +65,13 @@ document.getElementById('formConfig').addEventListener('submit', (e) => {
   carregarTudo();
 });
 
-document.getElementById('formLancamento').addEventListener('submit', async (e) => {
-  const dados = {
-    Data: document.getElementById('campoData').value,
-    Tipo: document.getElementById('campoTipo').value,
-    Categoria: document.getElementById('campoCategoria').value,
-    Descricao: document.getElementById('campoDescricao').value,
-    Valor: parseFloat(document.getElementById('campoValor').value || '0')
-  };
-  const ok = await chamarApiPost('criarLancamento', { dados });
-  if (ok) {
-    mostrarToast('Lançamento salvo');
-    carregarTudo();
-  } else {
-    mostrarToast('Erro ao salvar. Confira a conexão.');
-  }
-});
-
 document.getElementById('formNovaCategoria').addEventListener('submit', async (e) => {
   e.preventDefault();
   const dados = {
     Nome: document.getElementById('novaCategoriaNome').value.trim(),
     Tipo: document.getElementById('novaCategoriaTipo').value,
-    'Valor planejado mensal': parseFloat(document.getElementById('novaCategoriaValor').value || '0')
+    'Valor planejado mensal': parseFloat(document.getElementById('novaCategoriaValor').value || '0'),
+    Ano: anoAtual
   };
   if (!dados.Nome) return;
 
@@ -97,17 +85,21 @@ document.getElementById('formNovaCategoria').addEventListener('submit', async (e
   }
 });
 
-// ---------- HELPERS DE MÊS ----------
+document.getElementById('formNovoAno').addEventListener('submit', async () => {
+  const maxAno = anosDisponiveis.length ? Math.max(...anosDisponiveis) : anoAtual - 1;
+  const anoNovo = maxAno + 1;
+  const modo = document.querySelector('input[name="modoNovoAno"]:checked').value;
 
-function mesFormatado() {
-  const ano = mesAtual.getFullYear();
-  const mes = String(mesAtual.getMonth() + 1).padStart(2, '0');
-  return `${ano}-${mes}`;
-}
-
-function atualizarLabelMes() {
-  labelMes.textContent = `${NOMES_MES[mesAtual.getMonth()]} ${mesAtual.getFullYear()}`;
-}
+  const ok = await chamarApiPost('criarAno', { anoOrigem: maxAno, anoNovo, modo });
+  if (ok) {
+    mostrarToast(`Ano ${anoNovo} criado`);
+    anosDisponiveis.push(anoNovo);
+    anoAtual = anoNovo;
+    await carregarGrade();
+  } else {
+    mostrarToast('Erro ao criar o novo ano');
+  }
+});
 
 // ---------- API ----------
 
@@ -145,99 +137,226 @@ async function chamarApiPost(action, extra = {}) {
 // ---------- CARREGAMENTO ----------
 
 async function carregarTudo() {
-  atualizarLabelMes();
-  const mes = mesFormatado();
-
-  listaCategorias.innerHTML = '<p class="estado-vazio">Carregando...</p>';
-  listaLancamentos.innerHTML = '';
-
-  const [resumo, lancamentos] = await Promise.all([
-    chamarApiGet('resumo', { mes }),
-    chamarApiGet('lancamentos', { mes })
-  ]);
-
-  if (resumo) renderResumo(resumo);
-  if (lancamentos) renderLancamentos(lancamentos);
-
-  const categorias = await chamarApiGet('categorias');
-  if (categorias) {
-    categoriasCache = categorias;
-    preencherSelectCategorias(categorias);
+  const anos = await chamarApiGet('anos');
+  if (anos) {
+    anosDisponiveis = anos.anos || [];
+    anoAtual = anos.anoAtual || new Date().getFullYear();
   }
+  await carregarGrade();
 }
 
-function renderResumo(resumo) {
-  totalEntradasEl.textContent = formatarMoeda(resumo.totalEntradas);
-  totalSaidasEl.textContent = formatarMoeda(resumo.totalSaidas);
-  saldoMesEl.textContent = formatarMoeda(resumo.totalEntradas - resumo.totalSaidas);
+async function carregarGrade() {
+  atualizarLabelAno();
+  gradeContainer.innerHTML = '<p class="estado-vazio">Carregando...</p>';
 
-  if (!resumo.categorias || resumo.categorias.length === 0) {
-    listaCategorias.innerHTML = '<p class="estado-vazio">Nenhuma categoria cadastrada ainda.</p>';
+  const maxAno = anosDisponiveis.length ? Math.max(...anosDisponiveis) : anoAtual - 1;
+  if (anoAtual > maxAno) {
+    renderGradeVazia();
     return;
   }
 
-  listaCategorias.innerHTML = '';
-  resumo.categorias.forEach(cat => {
-    listaCategorias.appendChild(criarCardCategoria(cat));
-  });
+  const dados = await chamarApiGet('grade', { ano: anoAtual });
+  if (!dados) {
+    gradeContainer.innerHTML = '<p class="estado-vazio">Erro ao carregar. Confira a conexão.</p>';
+    return;
+  }
+
+  gradeAtual = dados;
+  renderGrade(gradeAtual);
 }
 
-function criarCardCategoria(cat) {
-  const div = document.createElement('div');
-  div.className = 'categoria-card';
+function atualizarLabelAno() {
+  labelAno.textContent = String(anoAtual);
+}
 
-  const percentual = cat.planejado > 0 ? (cat.realizado / cat.planejado) * 100 : 0;
-  const estourado = percentual > 100;
-  const largura = Math.min(percentual, 100);
-
-  div.innerHTML = `
-    <div class="categoria-topo">
-      <span class="categoria-nome">${cat.categoria}</span>
-      <span class="categoria-valores">${formatarMoeda(cat.realizado)} / ${formatarMoeda(cat.planejado)}</span>
-    </div>
-    <div class="ruler">
-      <div class="ruler-marcas"><span></span><span></span><span></span><span></span><span></span></div>
-      <div class="ruler-trilho">
-        <div class="ruler-preenchimento ${estourado ? 'estourado' : ''}" style="width:${largura}%"></div>
-      </div>
+function renderGradeVazia() {
+  gradeContainer.innerHTML = `
+    <div class="grade-vazia">
+      <p>O ano ${anoAtual} ainda não foi criado.</p>
+      <button type="button" class="btn-primario" id="btnCriarAnoInline">Criar ano ${anoAtual}</button>
     </div>
   `;
-  return div;
+  document.getElementById('btnCriarAnoInline').addEventListener('click', abrirModalNovoAno);
 }
 
-function renderLancamentos(lancamentos) {
-  if (!lancamentos || lancamentos.length === 0) {
-    listaLancamentos.innerHTML = '<p class="estado-vazio">Nenhum lançamento neste mês.</p>';
+function renderGrade(dados) {
+  const saidas = dados.categorias.filter(c => c.Tipo === 'Saída');
+  const entradas = dados.categorias.filter(c => c.Tipo === 'Entrada');
+
+  if (saidas.length === 0 && entradas.length === 0) {
+    gradeContainer.innerHTML = `
+      <div class="grade-vazia">
+        <p>Nenhuma categoria cadastrada em ${anoAtual}.</p>
+        <button type="button" class="link-btn" id="btnAbrirCategoriasVazio">Gerenciar categorias</button>
+      </div>
+    `;
+    document.getElementById('btnAbrirCategoriasVazio').addEventListener('click', abrirModalCategorias);
     return;
   }
 
-  const ordenados = [...lancamentos].sort((a, b) => new Date(b.Data) - new Date(a.Data));
+  const mapaCelulas = {};
+  (dados.celulas || []).forEach(c => {
+    mapaCelulas[`${c.Categoria}|${c.Mes}`] = c.Valor;
+  });
 
-  listaLancamentos.innerHTML = '';
-  ordenados.forEach(l => {
-    const div = document.createElement('div');
-    div.className = 'lancamento-item';
-    const sinal = l.Tipo === 'Entrada' ? '+' : '−';
-    const cor = l.Tipo === 'Entrada' ? 'valor-entrada' : 'valor-saida';
-    div.innerHTML = `
-      <div class="lancamento-info">
-        <div class="lancamento-desc">${l.Descricao || l.Categoria}</div>
-        <div class="lancamento-meta">${formatarDataCurta(l.Data)} · ${l.Categoria}</div>
-      </div>
-      <div class="lancamento-valor ${cor}">${sinal} ${formatarMoeda(l.Valor)}</div>
-    `;
-    listaLancamentos.appendChild(div);
+  let html = '<table class="tabela-grade"><thead><tr><th class="col-categoria">Categoria</th>';
+  NOMES_MES_ABREV.forEach(m => { html += `<th>${m}</th>`; });
+  html += '</tr></thead><tbody>';
+
+  html += linhaSecao('Saídas');
+  saidas.forEach(cat => { html += linhaCategoria(cat, mapaCelulas); });
+
+  html += linhaSecao('Entradas');
+  entradas.forEach(cat => { html += linhaCategoria(cat, mapaCelulas); });
+
+  html += '</tbody>';
+  html += rodapeGrade(saidas, entradas, mapaCelulas);
+  html += '</table>';
+
+  gradeContainer.innerHTML = html;
+
+  gradeContainer.querySelectorAll('.celula-valor').forEach(td => {
+    td.addEventListener('click', () => ativarEdicaoCelula(td));
   });
 }
 
-function preencherSelectCategorias(categorias) {
-  const select = document.getElementById('campoCategoria');
-  select.innerHTML = '';
-  categorias.forEach(cat => {
-    const opt = document.createElement('option');
-    opt.value = cat.Nome;
-    opt.textContent = cat.Nome;
-    select.appendChild(opt);
+function linhaSecao(titulo) {
+  return `<tr class="linha-secao"><td colspan="13">${titulo}</td></tr>`;
+}
+
+function linhaCategoria(cat, mapaCelulas) {
+  let html = `<tr><td class="col-categoria">${cat.Nome}</td>`;
+  for (let mes = 1; mes <= 12; mes++) {
+    html += celulaHtml(cat.Nome, mes, mapaCelulas[`${cat.Nome}|${mes}`]);
+  }
+  html += '</tr>';
+  return html;
+}
+
+function celulaHtml(categoria, mes, valor) {
+  let conteudo = '';
+  if (valor !== undefined) {
+    conteudo = (valor === null) ? '<span class="marca-sem-valor">—</span>' : formatarMoeda(valor);
+  }
+  return `<td class="celula-valor" data-categoria="${categoria}" data-mes="${mes}">${conteudo}</td>`;
+}
+
+function rodapeGrade(saidas, entradas, mapaCelulas) {
+  const totalEntradas = new Array(13).fill(0);
+  const totalSaidas = new Array(13).fill(0);
+
+  for (let mes = 1; mes <= 12; mes++) {
+    saidas.forEach(cat => {
+      const v = mapaCelulas[`${cat.Nome}|${mes}`];
+      if (typeof v === 'number') totalSaidas[mes] += v;
+    });
+    entradas.forEach(cat => {
+      const v = mapaCelulas[`${cat.Nome}|${mes}`];
+      if (typeof v === 'number') totalEntradas[mes] += v;
+    });
+  }
+
+  const saldo = new Array(13).fill(0);
+  for (let mes = 1; mes <= 12; mes++) saldo[mes] = totalEntradas[mes] - totalSaidas[mes];
+
+  let html = '<tfoot>';
+  html += linhaTotal('Entradas', totalEntradas, 'valor-entrada');
+  html += linhaTotal('Saídas', totalSaidas, 'valor-saida');
+  html += linhaTotal('Saldo', saldo, '', true);
+  html += '</tfoot>';
+  return html;
+}
+
+function linhaTotal(label, valores, classeCor, ehSaldo) {
+  let html = `<tr class="linha-total${ehSaldo ? ' linha-saldo' : ''}"><td class="col-categoria">${label}</td>`;
+  for (let mes = 1; mes <= 12; mes++) {
+    html += `<td class="${classeCor}">${formatarMoeda(valores[mes])}</td>`;
+  }
+  html += '</tr>';
+  return html;
+}
+
+// ---------- EDIÇÃO DE CÉLULA ----------
+
+function buscarValorCelula(categoria, mes) {
+  const encontrada = gradeAtual.celulas.find(c => c.Categoria === categoria && c.Mes === mes);
+  return encontrada ? encontrada.Valor : undefined;
+}
+
+function atualizarCelulaCache(categoria, mes, valor) {
+  const idx = gradeAtual.celulas.findIndex(c => c.Categoria === categoria && c.Mes === mes);
+  if (idx >= 0) {
+    gradeAtual.celulas[idx].Valor = valor;
+  } else {
+    gradeAtual.celulas.push({ Categoria: categoria, Mes: mes, Valor: valor });
+  }
+}
+
+function removerCelulaCache(categoria, mes) {
+  gradeAtual.celulas = gradeAtual.celulas.filter(c => !(c.Categoria === categoria && c.Mes === mes));
+}
+
+function ativarEdicaoCelula(td) {
+  if (td.querySelector('input')) return;
+
+  const categoria = td.dataset.categoria;
+  const mes = Number(td.dataset.mes);
+  const valorAtual = buscarValorCelula(categoria, mes);
+  const existeLinha = valorAtual !== undefined;
+  const valorInicial = (typeof valorAtual === 'number') ? valorAtual : '';
+
+  td.innerHTML = '';
+
+  const input = document.createElement('input');
+  input.type = 'number';
+  input.step = '0.01';
+  input.className = 'input-celula';
+  input.value = valorInicial;
+  td.appendChild(input);
+
+  if (existeLinha) {
+    const btnLimpar = document.createElement('button');
+    btnLimpar.type = 'button';
+    btnLimpar.className = 'btn-limpar-celula';
+    btnLimpar.textContent = '×';
+    btnLimpar.addEventListener('mousedown', (e) => e.preventDefault());
+    btnLimpar.addEventListener('click', async () => {
+      const ok = await chamarApiPost('limparCelula', { ano: anoAtual, mes, categoria });
+      if (ok) {
+        removerCelulaCache(categoria, mes);
+      } else {
+        mostrarToast('Erro ao limpar célula');
+      }
+      renderGrade(gradeAtual);
+    });
+    td.appendChild(btnLimpar);
+  }
+
+  input.focus();
+  input.select();
+
+  let cancelado = false;
+
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      input.blur();
+    } else if (e.key === 'Escape') {
+      cancelado = true;
+      renderGrade(gradeAtual);
+    }
+  });
+
+  input.addEventListener('blur', async () => {
+    if (cancelado) return;
+    const bruto = input.value.trim();
+    const valor = bruto === '' ? null : parseFloat(bruto);
+    const ok = await chamarApiPost('salvarCelula', { ano: anoAtual, mes, categoria, valor });
+    if (ok) {
+      atualizarCelulaCache(categoria, mes, valor);
+    } else {
+      mostrarToast('Erro ao salvar. Confira a conexão.');
+    }
+    renderGrade(gradeAtual);
   });
 }
 
@@ -255,16 +374,12 @@ async function abrirModalCategorias() {
 }
 
 async function recarregarCategorias() {
-  const categorias = await chamarApiGet('categorias');
+  const categorias = await chamarApiGet('categorias', { ano: anoAtual });
   if (categorias) {
     categoriasCache = categorias;
-    preencherSelectCategorias(categorias);
     renderListaCategoriasModal(categorias);
   }
-  // Atualiza também os cards de orçamento do mês, já que os planejados podem ter mudado
-  const mes = mesFormatado();
-  const resumo = await chamarApiGet('resumo', { mes });
-  if (resumo) renderResumo(resumo);
+  await carregarGrade();
 }
 
 function renderListaCategoriasModal(categorias) {
@@ -291,7 +406,7 @@ function renderListaCategoriasModal(categorias) {
     btn.addEventListener('click', async () => {
       const nome = btn.dataset.nome;
       if (!confirm(`Excluir a categoria "${nome}"? Os lançamentos já feitos nela não serão apagados.`)) return;
-      const ok = await chamarApiPost('excluirCategoria', { nome });
+      const ok = await chamarApiPost('excluirCategoria', { nome, ano: anoAtual });
       if (ok) {
         mostrarToast('Categoria excluída');
         await recarregarCategorias();
@@ -302,21 +417,18 @@ function renderListaCategoriasModal(categorias) {
   });
 }
 
-function abrirModalLancamento() {
-  document.getElementById('formLancamento').reset();
-  document.getElementById('campoData').value = new Date().toISOString().slice(0, 10);
-  modalLancamento.showModal();
+function abrirModalNovoAno() {
+  const maxAno = anosDisponiveis.length ? Math.max(...anosDisponiveis) : anoAtual - 1;
+  const anoNovo = maxAno + 1;
+  document.getElementById('formNovoAno').reset();
+  document.getElementById('labelNovoAno').textContent = anoNovo;
+  modalNovoAno.showModal();
 }
 
 // ---------- UTIL ----------
 
 function formatarMoeda(valor) {
   return (valor || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-}
-
-function formatarDataCurta(dataStr) {
-  const d = new Date(dataStr);
-  return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
 }
 
 function mostrarToast(msg) {
