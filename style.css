@@ -93,15 +93,6 @@ main {
   margin: 28px 0 12px;
 }
 
-.link-btn {
-  background: none;
-  border: none;
-  color: var(--ambar);
-  font-size: 13px;
-  cursor: pointer;
-  padding: 4px 0;
-}
-
 .valor-entrada { color: var(--teal); }
 .valor-saida { color: var(--clay); }
 
@@ -113,17 +104,6 @@ main {
 }
 
 /* ---------- GRADE ANUAL ---------- */
-
-.grade-cabecalho {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  margin-bottom: 12px;
-}
-
-.grade-cabecalho .secao-titulo {
-  margin: 0;
-}
 
 .grade-wrapper {
   overflow-x: auto;
@@ -175,10 +155,60 @@ main {
   left: 0;
   background: var(--bg-elevado);
   z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
 }
 
 .tabela-grade thead .col-categoria {
   z-index: 3;
+}
+
+.nome-categoria {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.btn-excluir-linha {
+  background: none;
+  border: none;
+  color: var(--clay);
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+  flex-shrink: 0;
+}
+
+.linha-adicionar td {
+  text-align: left;
+  position: static;
+}
+
+.btn-add-linha {
+  background: none;
+  border: none;
+  color: var(--ambar);
+  font-size: 13px;
+  cursor: pointer;
+  padding: 4px 0;
+}
+
+.input-nova-linha {
+  width: 100%;
+  padding: 6px 10px;
+  background: var(--bg-elevado-2);
+  border: 1px solid var(--ambar);
+  border-radius: 6px;
+  color: var(--texto);
+  font-size: 13px;
+  font-family: inherit;
+}
+
+.input-nova-linha:focus {
+  outline: none;
 }
 
 .tabela-grade .linha-secao td {
@@ -311,57 +341,6 @@ dialog input:not([type="radio"]), dialog select {
 dialog input:focus, dialog select:focus {
   outline: 2px solid var(--ambar);
   outline-offset: 1px;
-}
-
-.lista-categorias-modal {
-  max-height: 240px;
-  overflow-y: auto;
-  margin-top: 10px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.categoria-modal-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  background: var(--bg-elevado-2);
-  border-radius: 8px;
-  padding: 10px 12px;
-  gap: 10px;
-}
-
-.categoria-modal-info {
-  min-width: 0;
-}
-
-.categoria-modal-nome {
-  font-size: 14px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.categoria-modal-meta {
-  font-size: 12px;
-  color: var(--texto-mudo);
-  font-family: var(--fonte-mono);
-}
-
-.btn-excluir-categoria {
-  background: none;
-  border: none;
-  color: var(--clay);
-  font-size: 13px;
-  cursor: pointer;
-  flex-shrink: 0;
-}
-
-.form-nova-categoria {
-  border-top: 1px solid var(--borda);
-  margin-top: 16px;
-  padding-top: 12px;
 }
 
 .modal-botoes {

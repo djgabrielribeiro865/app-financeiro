@@ -25,10 +25,7 @@
 </header>
 
 <main>
-  <div class="grade-cabecalho">
-    <h2 class="secao-titulo">Lançamentos do ano</h2>
-    <button id="btnGerenciarCategorias" class="link-btn">Categorias</button>
-  </div>
+  <h2 class="secao-titulo">Lançamentos do ano</h2>
 
   <div id="gradeContainer" class="grade-wrapper">
     <p class="estado-vazio">Carregando...</p>
@@ -52,32 +49,6 @@
     <div class="modal-botoes">
       <button type="button" id="btnCancelarNovoAno" class="btn-secundario">Cancelar</button>
       <button type="submit" class="btn-primario">Criar</button>
-    </div>
-  </form>
-</dialog>
-
-<!-- Modal: gerenciar categorias -->
-<dialog id="modalCategorias">
-  <h3>Categorias</h3>
-
-  <div id="listaCategoriasModal" class="lista-categorias-modal"></div>
-
-  <form id="formNovaCategoria" class="form-nova-categoria">
-    <label>Nome
-      <input type="text" id="novaCategoriaNome" placeholder="Ex: Mercado" required>
-    </label>
-    <label>Tipo
-      <select id="novaCategoriaTipo">
-        <option value="Saída">Saída</option>
-        <option value="Entrada">Entrada</option>
-      </select>
-    </label>
-    <label>Valor planejado mensal
-      <input type="number" id="novaCategoriaValor" step="0.01" min="0" placeholder="0,00" required>
-    </label>
-    <div class="modal-botoes">
-      <button type="button" id="btnFecharCategorias" class="btn-secundario">Fechar</button>
-      <button type="submit" class="btn-primario">Adicionar categoria</button>
     </div>
   </form>
 </dialog>

@@ -4,7 +4,6 @@ let apiUrl = localStorage.getItem('apiUrl') || '';
 let apiToken = localStorage.getItem('apiToken') || '';
 let anoAtual = new Date().getFullYear();
 let anosDisponiveis = [];
-let categoriasCache = [];
 let gradeAtual = null;
 
 const NOMES_MES_ABREV = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
@@ -15,7 +14,6 @@ const labelAno = document.getElementById('labelAno');
 const gradeContainer = document.getElementById('gradeContainer');
 
 const modalConfig = document.getElementById('modalConfig');
-const modalCategorias = document.getElementById('modalCategorias');
 const modalNovoAno = document.getElementById('modalNovoAno');
 const toast = document.getElementById('toast');
 
@@ -50,8 +48,6 @@ document.getElementById('btnAnoProximo').addEventListener('click', () => {
 });
 
 document.getElementById('btnConfig').addEventListener('click', abrirModalConfig);
-document.getElementById('btnGerenciarCategorias').addEventListener('click', abrirModalCategorias);
-document.getElementById('btnFecharCategorias').addEventListener('click', () => modalCategorias.close());
 document.getElementById('btnNovoAno').addEventListener('click', abrirModalNovoAno);
 document.getElementById('btnCancelarNovoAno').addEventListener('click', () => modalNovoAno.close());
 document.getElementById('btnCancelarConfig').addEventListener('click', () => modalConfig.close());
@@ -63,26 +59,6 @@ document.getElementById('formConfig').addEventListener('submit', (e) => {
   localStorage.setItem('apiToken', apiToken);
   mostrarToast('Conexão salva');
   carregarTudo();
-});
-
-document.getElementById('formNovaCategoria').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const dados = {
-    Nome: document.getElementById('novaCategoriaNome').value.trim(),
-    Tipo: document.getElementById('novaCategoriaTipo').value,
-    'Valor planejado mensal': parseFloat(document.getElementById('novaCategoriaValor').value || '0'),
-    Ano: anoAtual
-  };
-  if (!dados.Nome) return;
-
-  const ok = await chamarApiPost('criarCategoria', { dados });
-  if (ok) {
-    mostrarToast('Categoria adicionada');
-    document.getElementById('formNovaCategoria').reset();
-    await recarregarCategorias();
-  } else {
-    mostrarToast('Erro ao adicionar categoria');
-  }
 });
 
 document.getElementById('formNovoAno').addEventListener('submit', async () => {
@@ -183,17 +159,6 @@ function renderGrade(dados) {
   const saidas = dados.categorias.filter(c => c.Tipo === 'Saída');
   const entradas = dados.categorias.filter(c => c.Tipo === 'Entrada');
 
-  if (saidas.length === 0 && entradas.length === 0) {
-    gradeContainer.innerHTML = `
-      <div class="grade-vazia">
-        <p>Nenhuma categoria cadastrada em ${anoAtual}.</p>
-        <button type="button" class="link-btn" id="btnAbrirCategoriasVazio">Gerenciar categorias</button>
-      </div>
-    `;
-    document.getElementById('btnAbrirCategoriasVazio').addEventListener('click', abrirModalCategorias);
-    return;
-  }
-
   const mapaCelulas = {};
   (dados.celulas || []).forEach(c => {
     mapaCelulas[`${c.Categoria}|${c.Mes}`] = c.Valor;
@@ -205,9 +170,11 @@ function renderGrade(dados) {
 
   html += linhaSecao('Saídas');
   saidas.forEach(cat => { html += linhaCategoria(cat, mapaCelulas); });
+  html += linhaAdicionar('Saída');
 
   html += linhaSecao('Entradas');
   entradas.forEach(cat => { html += linhaCategoria(cat, mapaCelulas); });
+  html += linhaAdicionar('Entrada');
 
   html += '</tbody>';
   html += rodapeGrade(saidas, entradas, mapaCelulas);
@@ -218,6 +185,12 @@ function renderGrade(dados) {
   gradeContainer.querySelectorAll('.celula-valor').forEach(td => {
     td.addEventListener('click', () => ativarEdicaoCelula(td));
   });
+  gradeContainer.querySelectorAll('.btn-excluir-linha').forEach(btn => {
+    btn.addEventListener('click', () => excluirLinha(btn.dataset.nome));
+  });
+  gradeContainer.querySelectorAll('.btn-add-linha').forEach(btn => {
+    btn.addEventListener('click', () => ativarAdicionarLinha(btn));
+  });
 }
 
 function linhaSecao(titulo) {
@@ -225,12 +198,20 @@ function linhaSecao(titulo) {
 }
 
 function linhaCategoria(cat, mapaCelulas) {
-  let html = `<tr><td class="col-categoria">${cat.Nome}</td>`;
+  let html = `<tr><td class="col-categoria">
+    <span class="nome-categoria">${cat.Nome}</span>
+    <button type="button" class="btn-excluir-linha" data-nome="${cat.Nome}" aria-label="Excluir">×</button>
+  </td>`;
   for (let mes = 1; mes <= 12; mes++) {
     html += celulaHtml(cat.Nome, mes, mapaCelulas[`${cat.Nome}|${mes}`]);
   }
   html += '</tr>';
   return html;
+}
+
+function linhaAdicionar(tipo) {
+  const label = tipo === 'Saída' ? '+ nova saída' : '+ nova entrada';
+  return `<tr class="linha-adicionar"><td colspan="13"><button type="button" class="btn-add-linha" data-tipo="${tipo}">${label}</button></td></tr>`;
 }
 
 function celulaHtml(categoria, mes, valor) {
@@ -360,61 +341,54 @@ function ativarEdicaoCelula(td) {
   });
 }
 
+// ---------- LINHAS (CATEGORIAS) ----------
+
+async function excluirLinha(nome) {
+  if (!confirm(`Excluir "${nome}"? Os valores já lançados nele não serão apagados.`)) return;
+  const ok = await chamarApiPost('excluirCategoria', { nome, ano: anoAtual });
+  if (ok) {
+    gradeAtual.categorias = gradeAtual.categorias.filter(c => c.Nome !== nome);
+    gradeAtual.celulas = gradeAtual.celulas.filter(c => c.Categoria !== nome);
+    renderGrade(gradeAtual);
+  } else {
+    mostrarToast('Erro ao excluir');
+  }
+}
+
+function ativarAdicionarLinha(btn) {
+  const tipo = btn.dataset.tipo;
+  const tr = btn.closest('tr');
+  tr.innerHTML = '<td colspan="13"><input type="text" class="input-nova-linha" placeholder="Nome"></td>';
+
+  const input = tr.querySelector('input');
+  input.focus();
+
+  input.addEventListener('keydown', async (e) => {
+    if (e.key === 'Enter') {
+      const nome = input.value.trim();
+      if (nome) {
+        const ok = await chamarApiPost('criarCategoria', { dados: { Nome: nome, Tipo: tipo, Ano: anoAtual } });
+        if (ok) {
+          gradeAtual.categorias.push({ Nome: nome, Tipo: tipo });
+        } else {
+          mostrarToast('Erro ao adicionar');
+        }
+      }
+      renderGrade(gradeAtual);
+    } else if (e.key === 'Escape') {
+      renderGrade(gradeAtual);
+    }
+  });
+
+  input.addEventListener('blur', () => renderGrade(gradeAtual));
+}
+
 // ---------- MODAIS ----------
 
 function abrirModalConfig() {
   document.getElementById('campoApiUrl').value = apiUrl;
   document.getElementById('campoApiToken').value = apiToken;
   modalConfig.showModal();
-}
-
-async function abrirModalCategorias() {
-  modalCategorias.showModal();
-  await recarregarCategorias();
-}
-
-async function recarregarCategorias() {
-  const categorias = await chamarApiGet('categorias', { ano: anoAtual });
-  if (categorias) {
-    categoriasCache = categorias;
-    renderListaCategoriasModal(categorias);
-  }
-  await carregarGrade();
-}
-
-function renderListaCategoriasModal(categorias) {
-  const container = document.getElementById('listaCategoriasModal');
-  if (!categorias || categorias.length === 0) {
-    container.innerHTML = '<p class="estado-vazio">Nenhuma categoria ainda.</p>';
-    return;
-  }
-  container.innerHTML = '';
-  categorias.forEach(cat => {
-    const div = document.createElement('div');
-    div.className = 'categoria-modal-item';
-    div.innerHTML = `
-      <div class="categoria-modal-info">
-        <div class="categoria-modal-nome">${cat.Nome}</div>
-        <div class="categoria-modal-meta">${cat.Tipo} · ${formatarMoeda(cat['Valor planejado mensal'])}</div>
-      </div>
-      <button class="btn-excluir-categoria" data-nome="${cat.Nome}">Excluir</button>
-    `;
-    container.appendChild(div);
-  });
-
-  container.querySelectorAll('.btn-excluir-categoria').forEach(btn => {
-    btn.addEventListener('click', async () => {
-      const nome = btn.dataset.nome;
-      if (!confirm(`Excluir a categoria "${nome}"? Os lançamentos já feitos nela não serão apagados.`)) return;
-      const ok = await chamarApiPost('excluirCategoria', { nome, ano: anoAtual });
-      if (ok) {
-        mostrarToast('Categoria excluída');
-        await recarregarCategorias();
-      } else {
-        mostrarToast('Erro ao excluir categoria');
-      }
-    });
-  });
 }
 
 function abrirModalNovoAno() {
