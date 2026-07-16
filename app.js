@@ -344,7 +344,7 @@ function ativarEdicaoCelula(td) {
 // ---------- LINHAS (CATEGORIAS) ----------
 
 async function excluirLinha(nome) {
-  if (!confirm(`Excluir "${nome}"? Os valores já lançados nele não serão apagados.`)) return;
+  if (!confirm(`Excluir "${nome}"? Todos os valores já lançados nessa categoria neste ano também serão apagados. Essa ação não pode ser desfeita.`)) return;
   const ok = await chamarApiPost('excluirCategoria', { nome, ano: anoAtual });
   if (ok) {
     gradeAtual.categorias = gradeAtual.categorias.filter(c => c.Nome !== nome);

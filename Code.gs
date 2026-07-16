@@ -372,13 +372,28 @@ function criarCategoria(dados) {
 function excluirCategoria(nome, ano) {
   const aba = getAba(NOME_ABA_CATEGORIAS);
   const valores = aba.getDataRange().getValues();
+  let encontrada = false;
   for (let i = 1; i < valores.length; i++) {
     if (valores[i][0] === nome && Number(valores[i][2]) === Number(ano)) {
       aba.deleteRow(i + 1);
-      return { sucesso: true };
+      encontrada = true;
+      break;
     }
   }
-  throw new Error('Categoria não encontrada: ' + nome);
+  if (!encontrada) throw new Error('Categoria não encontrada: ' + nome);
+
+  excluirLancamentosDaCategoria(nome, ano);
+
+  return { sucesso: true };
+}
+
+function excluirLancamentosDaCategoria(nome, ano) {
+  const aba = getAba(NOME_ABA_LANCAMENTOS);
+  const todos = abaParaObjetos(aba);
+  todos
+    .filter(l => l.Categoria === nome && l.Data && new Date(l.Data).getFullYear() === Number(ano))
+    .sort((a, b) => b._linha - a._linha)
+    .forEach(l => aba.deleteRow(l._linha));
 }
 
 // ---------- RESPOSTA ----------
