@@ -131,7 +131,7 @@ button { font-family: inherit; }
   justify-content: center;
   gap: 8px;
   padding: 20px 18px 4px;
-  max-width: 940px;
+  max-width: 1400px;
   margin: 0 auto;
 }
 
@@ -192,7 +192,7 @@ button { font-family: inherit; }
 
 main {
   padding: 8px 16px;
-  max-width: 940px;
+  max-width: 1400px;
   margin: 0 auto;
 }
 
@@ -702,11 +702,21 @@ dialog input:focus {
 /* ---------- TELAS MAIORES (tablet / web) ---------- */
 
 @media (min-width: 720px) {
+  main { padding: 8px 24px; }
+  .seletor-ano { padding: 24px 24px 4px; }
+  .ano-label { font-size: 34px; }
+
+  .resumo { padding: 22px 24px 20px; }
+  .resumo-saldo { font-size: 34px; }
+  .resumo-item { padding: 14px 18px; }
+  .resumo-item .val { font-size: 20px; }
+
+  .secao-titulo { font-size: 16px; }
+
   .tabela-grade { font-size: 14px; }
   .tabela-grade th, .tabela-grade td { padding: 14px 20px; }
-  .resumo-saldo { font-size: 32px; }
-  .resumo-item .val { font-size: 19px; }
 
+  /* destaca a linha inteira ao passar o mouse (uso no navegador) */
   .tabela-grade tbody tr:not(.linha-secao):not(.linha-adicionar):hover td {
     background: var(--surface-2);
   }
@@ -715,6 +725,36 @@ dialog input:focus {
   }
 }
 
-@media (min-width: 1100px) {
-  .tabela-grade th, .tabela-grade td { padding: 15px 22px; }
+/* A partir daqui a grade cabe inteira: para de rolar de lado e passa a
+   ocupar toda a largura disponível, distribuindo os 12 meses. */
+@media (min-width: 1024px) {
+  main { padding: 8px 32px; }
+
+  .tabela-grade {
+    width: 100%;
+    min-width: 100%;
+    table-layout: fixed;
+  }
+
+  .tabela-grade .col-categoria {
+    width: 200px;
+    min-width: 200px;
+  }
+
+  .tabela-grade th, .tabela-grade td { padding: 15px 16px; }
+
+  .tabela-grade .celula-valor,
+  .tabela-grade tfoot td:not(.col-categoria) {
+    text-align: right;
+  }
+
+  .nome-categoria { max-width: 100%; }
+}
+
+@media (min-width: 1400px) {
+  main { padding: 8px 40px 40px; }
+  .tabela-grade { font-size: 15px; }
+  .tabela-grade th, .tabela-grade td { padding: 17px 20px; }
+  .tabela-grade .col-categoria { width: 240px; min-width: 240px; }
+  .resumo-saldo { font-size: 38px; }
 }

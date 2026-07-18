@@ -1,4 +1,4 @@
-const CACHE_NAME = 'controle-financeiro-v3';
+const CACHE_NAME = 'controle-financeiro-v4';
 const ARQUIVOS_SHELL = [
   './',
   './index.html',
