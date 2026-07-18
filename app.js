@@ -15,6 +15,11 @@ const MES_CALENDARIO = new Date().getMonth() + 1;
 const labelAno = document.getElementById('labelAno');
 const gradeContainer = document.getElementById('gradeContainer');
 const resumoAno = document.getElementById('resumoAno');
+const btnAnoAnterior = document.getElementById('btnAnoAnterior');
+const btnAnoProximo = document.getElementById('btnAnoProximo');
+
+const SVG_SETA_DIREITA = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg>';
+const SVG_MAIS = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>';
 
 const modalConfig = document.getElementById('modalConfig');
 const modalNovoAno = document.getElementById('modalNovoAno');
@@ -34,7 +39,7 @@ window.addEventListener('DOMContentLoaded', () => {
   }
 });
 
-document.getElementById('btnAnoAnterior').addEventListener('click', () => {
+btnAnoAnterior.addEventListener('click', () => {
   const minAno = anosDisponiveis.length ? Math.min(...anosDisponiveis) : anoAtual;
   if (anoAtual > minAno) {
     anoAtual--;
@@ -42,9 +47,11 @@ document.getElementById('btnAnoAnterior').addEventListener('click', () => {
   }
 });
 
-document.getElementById('btnAnoProximo').addEventListener('click', () => {
-  const maxAno = anosDisponiveis.length ? Math.max(...anosDisponiveis) : anoAtual - 1;
-  if (anoAtual < maxAno + 1) {
+btnAnoProximo.addEventListener('click', () => {
+  if (btnAnoProximo.dataset.modo === 'criar') {
+    const { alvo, origem } = anoParaCriar();
+    abrirModalNovoAno(alvo, origem);
+  } else if (anosDisponiveis.includes(anoAtual + 1)) {
     anoAtual++;
     carregarGrade();
   }
@@ -63,15 +70,17 @@ document.getElementById('formConfig').addEventListener('submit', () => {
   carregarTudo();
 });
 
-document.getElementById('formNovoAno').addEventListener('submit', async () => {
-  const maxAno = anosDisponiveis.length ? Math.max(...anosDisponiveis) : anoAtual - 1;
-  const anoNovo = maxAno + 1;
+document.getElementById('formNovoAno').addEventListener('submit', async (e) => {
+  const form = e.target;
+  const anoNovo = Number(form.dataset.anoNovo);
+  const origemRaw = form.dataset.anoOrigem;
+  const anoOrigem = origemRaw === '' ? null : Number(origemRaw);
   const modo = document.querySelector('input[name="modoNovoAno"]:checked').value;
 
-  const ok = await chamarApiPost('criarAno', { anoOrigem: maxAno, anoNovo, modo });
+  const ok = await chamarApiPost('criarAno', { anoOrigem, anoNovo, modo });
   if (ok) {
     mostrarToast(`Ano ${anoNovo} criado`);
-    anosDisponiveis.push(anoNovo);
+    if (!anosDisponiveis.includes(anoNovo)) anosDisponiveis.push(anoNovo);
     anoAtual = anoNovo;
     await carregarGrade();
   } else {
@@ -125,6 +134,7 @@ async function carregarTudo() {
 
 async function carregarGrade() {
   atualizarLabelAno();
+  atualizarControlesAno();
   resumoAno.hidden = true;
   gradeContainer.innerHTML = '<p class="estado-vazio">Carregando…</p>';
 
@@ -148,6 +158,35 @@ function atualizarLabelAno() {
   labelAno.textContent = String(anoAtual);
 }
 
+// Descobre qual ano o botão "+" deve criar e de onde copiar.
+// - Vendo o último ano criado: cria o seguinte, copiando dele.
+// - Vendo um ano ainda não criado (bootstrap sem nenhum ano): cria o próprio.
+function anoParaCriar() {
+  if (!anosDisponiveis.includes(anoAtual)) {
+    const origem = anosDisponiveis.length ? Math.max(...anosDisponiveis) : null;
+    return { alvo: anoAtual, origem };
+  }
+  return { alvo: anoAtual + 1, origem: anoAtual };
+}
+
+function atualizarControlesAno() {
+  const minAno = anosDisponiveis.length ? Math.min(...anosDisponiveis) : anoAtual;
+  btnAnoAnterior.disabled = anoAtual <= minAno;
+
+  // Se o próximo ano já existe, o botão navega; senão, vira o "+" de criar.
+  if (anosDisponiveis.includes(anoAtual + 1)) {
+    btnAnoProximo.dataset.modo = 'nav';
+    btnAnoProximo.innerHTML = SVG_SETA_DIREITA;
+    btnAnoProximo.setAttribute('aria-label', 'Próximo ano');
+    btnAnoProximo.classList.remove('criar');
+  } else {
+    btnAnoProximo.dataset.modo = 'criar';
+    btnAnoProximo.innerHTML = SVG_MAIS;
+    btnAnoProximo.setAttribute('aria-label', 'Criar ano ' + anoParaCriar().alvo);
+    btnAnoProximo.classList.add('criar');
+  }
+}
+
 function renderGradeVazia() {
   resumoAno.hidden = true;
   gradeContainer.innerHTML = `
@@ -156,7 +195,10 @@ function renderGradeVazia() {
       <button type="button" class="btn-primario" id="btnCriarAnoInline">Criar ano ${anoAtual}</button>
     </div>
   `;
-  document.getElementById('btnCriarAnoInline').addEventListener('click', abrirModalNovoAno);
+  document.getElementById('btnCriarAnoInline').addEventListener('click', () => {
+    const { alvo, origem } = anoParaCriar();
+    abrirModalNovoAno(alvo, origem);
+  });
 }
 
 // ---------- TOTAIS ----------
@@ -455,11 +497,23 @@ function abrirModalConfig() {
   modalConfig.showModal();
 }
 
-function abrirModalNovoAno() {
-  const maxAno = anosDisponiveis.length ? Math.max(...anosDisponiveis) : anoAtual - 1;
-  const anoNovo = maxAno + 1;
-  document.getElementById('formNovoAno').reset();
+function abrirModalNovoAno(anoNovo, anoOrigem) {
+  const form = document.getElementById('formNovoAno');
+  form.reset();
+  form.dataset.anoNovo = anoNovo;
+  form.dataset.anoOrigem = (anoOrigem === null || anoOrigem === undefined) ? '' : anoOrigem;
   document.getElementById('labelNovoAno').textContent = anoNovo;
+
+  // Sem ano de origem não há o que copiar: mostra só a opção "zerado".
+  const radioCopiar = form.querySelector('input[value="copiar"]');
+  const opcaoCopiar = radioCopiar.closest('.opcao-radio');
+  if (anoOrigem === null || anoOrigem === undefined) {
+    opcaoCopiar.hidden = true;
+    form.querySelector('input[value="zerado"]').checked = true;
+  } else {
+    opcaoCopiar.hidden = false;
+    radioCopiar.checked = true;
+  }
   modalNovoAno.showModal();
 }
 
