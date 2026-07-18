@@ -7,11 +7,14 @@ let anosDisponiveis = [];
 let gradeAtual = null;
 
 const NOMES_MES_ABREV = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+const ANO_CALENDARIO = new Date().getFullYear();
+const MES_CALENDARIO = new Date().getMonth() + 1;
 
 // ---------- ELEMENTOS ----------
 
 const labelAno = document.getElementById('labelAno');
 const gradeContainer = document.getElementById('gradeContainer');
+const resumoAno = document.getElementById('resumoAno');
 
 const modalConfig = document.getElementById('modalConfig');
 const modalNovoAno = document.getElementById('modalNovoAno');
@@ -52,7 +55,7 @@ document.getElementById('btnNovoAno').addEventListener('click', abrirModalNovoAn
 document.getElementById('btnCancelarNovoAno').addEventListener('click', () => modalNovoAno.close());
 document.getElementById('btnCancelarConfig').addEventListener('click', () => modalConfig.close());
 
-document.getElementById('formConfig').addEventListener('submit', (e) => {
+document.getElementById('formConfig').addEventListener('submit', () => {
   apiUrl = document.getElementById('campoApiUrl').value.trim();
   apiToken = document.getElementById('campoApiToken').value.trim();
   localStorage.setItem('apiUrl', apiUrl);
@@ -123,7 +126,8 @@ async function carregarTudo() {
 
 async function carregarGrade() {
   atualizarLabelAno();
-  gradeContainer.innerHTML = '<p class="estado-vazio">Carregando...</p>';
+  resumoAno.hidden = true;
+  gradeContainer.innerHTML = '<p class="estado-vazio">Carregando…</p>';
 
   const maxAno = anosDisponiveis.length ? Math.max(...anosDisponiveis) : anoAtual - 1;
   if (anoAtual > maxAno) {
@@ -146,6 +150,7 @@ function atualizarLabelAno() {
 }
 
 function renderGradeVazia() {
+  resumoAno.hidden = true;
   gradeContainer.innerHTML = `
     <div class="grade-vazia">
       <p>O ano ${anoAtual} ainda não foi criado.</p>
@@ -154,6 +159,63 @@ function renderGradeVazia() {
   `;
   document.getElementById('btnCriarAnoInline').addEventListener('click', abrirModalNovoAno);
 }
+
+// ---------- TOTAIS ----------
+
+function calcularTotais(saidas, entradas, mapaCelulas) {
+  const totalEntradas = new Array(13).fill(0);
+  const totalSaidas = new Array(13).fill(0);
+
+  for (let mes = 1; mes <= 12; mes++) {
+    saidas.forEach(cat => {
+      const v = mapaCelulas[`${cat.Nome}|${mes}`];
+      if (typeof v === 'number') totalSaidas[mes] += v;
+    });
+    entradas.forEach(cat => {
+      const v = mapaCelulas[`${cat.Nome}|${mes}`];
+      if (typeof v === 'number') totalEntradas[mes] += v;
+    });
+  }
+
+  const saldo = new Array(13).fill(0);
+  for (let mes = 1; mes <= 12; mes++) saldo[mes] = totalEntradas[mes] - totalSaidas[mes];
+
+  return { totalEntradas, totalSaidas, saldo };
+}
+
+function ehMesAtual(mes) {
+  return anoAtual === ANO_CALENDARIO && mes === MES_CALENDARIO;
+}
+
+// ---------- RESUMO DO ANO ----------
+
+function renderResumo(totais) {
+  const somaAno = (arr) => arr.reduce((a, b) => a + b, 0);
+  const entradasAno = somaAno(totais.totalEntradas);
+  const saidasAno = somaAno(totais.totalSaidas);
+  const saldoAno = entradasAno - saidasAno;
+  const classe = saldoAno >= 0 ? 'positivo' : 'negativo';
+
+  resumoAno.innerHTML = `
+    <div class="resumo-topo">
+      <span class="resumo-rotulo">Saldo do ano</span>
+      <span class="resumo-saldo ${classe}">${formatarMoeda(saldoAno)}</span>
+    </div>
+    <div class="resumo-linhas">
+      <div class="resumo-item ent">
+        <span class="rot">Entradas</span>
+        <span class="val">${formatarMoeda(entradasAno)}</span>
+      </div>
+      <div class="resumo-item sai">
+        <span class="rot">Saídas</span>
+        <span class="val">${formatarMoeda(saidasAno)}</span>
+      </div>
+    </div>
+  `;
+  resumoAno.hidden = false;
+}
+
+// ---------- GRADE ----------
 
 function renderGrade(dados) {
   const saidas = dados.categorias.filter(c => c.Tipo === 'Saída');
@@ -164,20 +226,26 @@ function renderGrade(dados) {
     mapaCelulas[`${c.Categoria}|${c.Mes}`] = c.Valor;
   });
 
+  const totais = calcularTotais(saidas, entradas, mapaCelulas);
+  renderResumo(totais);
+
   let html = '<table class="tabela-grade"><thead><tr><th class="col-categoria">Categoria</th>';
-  NOMES_MES_ABREV.forEach(m => { html += `<th>${m}</th>`; });
+  NOMES_MES_ABREV.forEach((m, i) => {
+    const cls = ehMesAtual(i + 1) ? ' class="mes-atual"' : '';
+    html += `<th${cls}>${m}</th>`;
+  });
   html += '</tr></thead><tbody>';
 
-  html += linhaSecao('Saídas');
+  html += linhaSecao('Saídas', 'sec-saida');
   saidas.forEach(cat => { html += linhaCategoria(cat, mapaCelulas); });
   html += linhaAdicionar('Saída');
 
-  html += linhaSecao('Entradas');
+  html += linhaSecao('Entradas', 'sec-entrada');
   entradas.forEach(cat => { html += linhaCategoria(cat, mapaCelulas); });
   html += linhaAdicionar('Entrada');
 
   html += '</tbody>';
-  html += rodapeGrade(saidas, entradas, mapaCelulas);
+  html += rodapeGrade(totais);
   html += '</table>';
 
   gradeContainer.innerHTML = html;
@@ -193,8 +261,8 @@ function renderGrade(dados) {
   });
 }
 
-function linhaSecao(titulo) {
-  return `<tr class="linha-secao"><td colspan="13">${titulo}</td></tr>`;
+function linhaSecao(titulo, classe) {
+  return `<tr class="linha-secao ${classe}"><td colspan="13"><span class="ponto"></span>${titulo}</td></tr>`;
 }
 
 function linhaCategoria(cat, mapaCelulas) {
@@ -219,39 +287,35 @@ function celulaHtml(categoria, mes, valor) {
   if (valor !== undefined) {
     conteudo = (valor === null) ? '<span class="marca-sem-valor">—</span>' : formatarMoeda(valor);
   }
-  return `<td class="celula-valor" data-categoria="${categoria}" data-mes="${mes}">${conteudo}</td>`;
+  const cls = 'celula-valor' + (ehMesAtual(mes) ? ' mes-atual' : '');
+  return `<td class="${cls}" data-categoria="${categoria}" data-mes="${mes}">${conteudo}</td>`;
 }
 
-function rodapeGrade(saidas, entradas, mapaCelulas) {
-  const totalEntradas = new Array(13).fill(0);
-  const totalSaidas = new Array(13).fill(0);
-
-  for (let mes = 1; mes <= 12; mes++) {
-    saidas.forEach(cat => {
-      const v = mapaCelulas[`${cat.Nome}|${mes}`];
-      if (typeof v === 'number') totalSaidas[mes] += v;
-    });
-    entradas.forEach(cat => {
-      const v = mapaCelulas[`${cat.Nome}|${mes}`];
-      if (typeof v === 'number') totalEntradas[mes] += v;
-    });
-  }
-
-  const saldo = new Array(13).fill(0);
-  for (let mes = 1; mes <= 12; mes++) saldo[mes] = totalEntradas[mes] - totalSaidas[mes];
-
+function rodapeGrade(totais) {
   let html = '<tfoot>';
-  html += linhaTotal('Entradas', totalEntradas, 'valor-entrada');
-  html += linhaTotal('Saídas', totalSaidas, 'valor-saida');
-  html += linhaTotal('Saldo', saldo, '', true);
+  html += linhaTotal('Entradas', totais.totalEntradas, 'valor-entrada');
+  html += linhaTotal('Saídas', totais.totalSaidas, 'valor-saida');
+  html += linhaSaldo('Saldo', totais.saldo);
   html += '</tfoot>';
   return html;
 }
 
-function linhaTotal(label, valores, classeCor, ehSaldo) {
-  let html = `<tr class="linha-total${ehSaldo ? ' linha-saldo' : ''}"><td class="col-categoria">${label}</td>`;
+function linhaTotal(label, valores, classeCor) {
+  let html = `<tr class="linha-total"><td class="col-categoria">${label}</td>`;
   for (let mes = 1; mes <= 12; mes++) {
-    html += `<td class="${classeCor}">${formatarMoeda(valores[mes])}</td>`;
+    const cls = classeCor + (ehMesAtual(mes) ? ' mes-atual' : '');
+    html += `<td class="${cls}">${formatarMoeda(valores[mes])}</td>`;
+  }
+  html += '</tr>';
+  return html;
+}
+
+function linhaSaldo(label, valores) {
+  let html = `<tr class="linha-saldo"><td class="col-categoria">${label}</td>`;
+  for (let mes = 1; mes <= 12; mes++) {
+    const neg = valores[mes] < 0 ? ' negativo' : '';
+    const atual = ehMesAtual(mes) ? ' mes-atual' : '';
+    html += `<td class="${neg}${atual}">${formatarMoeda(valores[mes])}</td>`;
   }
   html += '</tr>';
   return html;
@@ -291,6 +355,7 @@ function ativarEdicaoCelula(td) {
   const input = document.createElement('input');
   input.type = 'number';
   input.step = '0.01';
+  input.inputMode = 'decimal';
   input.className = 'input-celula';
   input.value = valorInicial;
   td.appendChild(input);
@@ -358,7 +423,7 @@ async function excluirLinha(nome) {
 function ativarAdicionarLinha(btn) {
   const tipo = btn.dataset.tipo;
   const tr = btn.closest('tr');
-  tr.innerHTML = '<td colspan="13"><input type="text" class="input-nova-linha" placeholder="Nome"></td>';
+  tr.innerHTML = '<td colspan="13"><input type="text" class="input-nova-linha" placeholder="Nome da categoria"></td>';
 
   const input = tr.querySelector('input');
   input.focus();

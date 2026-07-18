@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#1A1B1E">
+<meta name="theme-color" content="#0F0F11">
 <title>Controle Financeiro</title>
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon-192.png">
@@ -15,20 +15,43 @@
 <body>
 
 <header class="topbar">
-  <button id="btnAnoAnterior" class="icon-btn" aria-label="Ano anterior">‹</button>
-  <div class="mes-atual">
-    <span id="labelAno">2026</span>
+  <div class="brand">
+    <span class="brand-mark" aria-hidden="true"></span>
+    <span class="brand-nome">Financeiro</span>
   </div>
-  <button id="btnAnoProximo" class="icon-btn" aria-label="Próximo ano">›</button>
-  <button id="btnNovoAno" class="icon-btn" aria-label="Criar novo ano">+</button>
-  <button id="btnConfig" class="icon-btn config-btn" aria-label="Configurações">⚙</button>
+  <div class="topbar-acoes">
+    <button id="btnNovoAno" class="icon-btn" aria-label="Criar novo ano">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+    </button>
+    <button id="btnConfig" class="icon-btn" aria-label="Configurações">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2.5v2M12 19.5v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M2.5 12h2M19.5 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4"/></svg>
+    </button>
+  </div>
 </header>
 
+<div class="seletor-ano">
+  <button id="btnAnoAnterior" class="ano-nav" aria-label="Ano anterior">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>
+  </button>
+  <div class="ano-atual">
+    <span class="ano-label" id="labelAno">2026</span>
+    <span class="ano-sub">ano fiscal</span>
+  </div>
+  <button id="btnAnoProximo" class="ano-nav" aria-label="Próximo ano">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg>
+  </button>
+</div>
+
 <main>
-  <h2 class="secao-titulo">Lançamentos do ano</h2>
+  <section id="resumoAno" class="resumo" hidden></section>
+
+  <div class="secao-cabecalho">
+    <h2 class="secao-titulo">Grade anual</h2>
+    <span class="secao-dica">toque numa célula para lançar</span>
+  </div>
 
   <div id="gradeContainer" class="grade-wrapper">
-    <p class="estado-vazio">Carregando...</p>
+    <p class="estado-vazio">Carregando…</p>
   </div>
 </main>
 
@@ -39,16 +62,22 @@
 
     <label class="opcao-radio">
       <input type="radio" name="modoNovoAno" value="copiar" checked>
-      Copiar categorias e lançamentos do ano atual
+      <span>
+        <strong>Copiar do ano anterior</strong>
+        <small>Traz as categorias e todos os lançamentos já feitos.</small>
+      </span>
     </label>
     <label class="opcao-radio">
       <input type="radio" name="modoNovoAno" value="zerado">
-      Criar estrutura zerada (só as categorias)
+      <span>
+        <strong>Começar zerado</strong>
+        <small>Traz só as categorias, sem nenhum valor.</small>
+      </span>
     </label>
 
     <div class="modal-botoes">
       <button type="button" id="btnCancelarNovoAno" class="btn-secundario">Cancelar</button>
-      <button type="submit" class="btn-primario">Criar</button>
+      <button type="submit" class="btn-primario">Criar ano</button>
     </div>
   </form>
 </dialog>
@@ -64,7 +93,7 @@
     </label>
 
     <label>Token
-      <input type="text" id="campoApiToken" required>
+      <input type="text" id="campoApiToken" placeholder="cole o token aqui" required>
     </label>
 
     <div class="modal-botoes">
