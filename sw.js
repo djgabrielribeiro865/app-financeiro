@@ -1,9 +1,12 @@
-const CACHE_NAME = 'controle-financeiro-v4';
+// Ao publicar mudanças em style.css/app.js, incremente o número aqui E no
+// ?v= dos <link>/<script> do index.html (mantê-los iguais evita cache velho).
+const VERSAO_ASSETS = '4';
+const CACHE_NAME = 'controle-financeiro-v' + VERSAO_ASSETS;
 const ARQUIVOS_SHELL = [
   './',
   './index.html',
-  './style.css',
-  './app.js',
+  './style.css?v=' + VERSAO_ASSETS,
+  './app.js?v=' + VERSAO_ASSETS,
   './manifest.json',
   './icon-192.png',
   './icon-512.png'
