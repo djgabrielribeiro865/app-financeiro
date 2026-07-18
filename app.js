@@ -51,7 +51,6 @@ document.getElementById('btnAnoProximo').addEventListener('click', () => {
 });
 
 document.getElementById('btnConfig').addEventListener('click', abrirModalConfig);
-document.getElementById('btnNovoAno').addEventListener('click', abrirModalNovoAno);
 document.getElementById('btnCancelarNovoAno').addEventListener('click', () => modalNovoAno.close());
 document.getElementById('btnCancelarConfig').addEventListener('click', () => modalConfig.close());
 
