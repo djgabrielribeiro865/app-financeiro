@@ -5,6 +5,7 @@ let apiToken = localStorage.getItem('apiToken') || '';
 let anoAtual = new Date().getFullYear();
 let anosDisponiveis = [];
 let gradeAtual = null;
+const gradeCache = {}; // ano -> dados da grade (evita rebuscar na rede)
 
 const NOMES_MES_ABREV = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
 const ANO_CALENDARIO = new Date().getFullYear();
@@ -90,19 +91,19 @@ document.getElementById('formNovoAno').addEventListener('submit', async (e) => {
 
 // ---------- API ----------
 
-async function chamarApiGet(action, params = {}) {
+async function chamarApiGet(action, params = {}, silencioso = false) {
   if (!apiUrl || !apiToken) return null;
   const query = new URLSearchParams({ action, token: apiToken, ...params });
   try {
     const resp = await fetch(`${apiUrl}?${query.toString()}`);
     const data = await resp.json();
     if (data.erro) {
-      mostrarToast(data.erro);
+      if (!silencioso) mostrarToast(data.erro);
       return null;
     }
     return data;
   } catch (err) {
-    mostrarToast('Falha de conexão com a API');
+    if (!silencioso) mostrarToast('Falha de conexão com a API');
     return null;
   }
 }
@@ -136,7 +137,6 @@ async function carregarGrade() {
   atualizarLabelAno();
   atualizarControlesAno();
   resumoAno.hidden = true;
-  gradeContainer.innerHTML = '<p class="estado-vazio">Carregando…</p>';
 
   const maxAno = anosDisponiveis.length ? Math.max(...anosDisponiveis) : anoAtual - 1;
   if (anoAtual > maxAno) {
@@ -144,14 +144,51 @@ async function carregarGrade() {
     return;
   }
 
-  const dados = await chamarApiGet('grade', { ano: anoAtual });
-  if (!dados) {
-    gradeContainer.innerHTML = '<p class="estado-vazio">Erro ao carregar. Confira a conexão.</p>';
-    return;
+  const ano = anoAtual;
+
+  if (gradeCache[ano]) {
+    // Já visitado: mostra na hora a partir do cache e revalida em segundo plano.
+    gradeAtual = gradeCache[ano];
+    renderGrade(gradeAtual);
+    revalidarGrade(ano);
+  } else {
+    gradeContainer.innerHTML = '<p class="estado-vazio">Carregando…</p>';
+    const dados = await chamarApiGet('grade', { ano });
+    if (!dados) {
+      gradeContainer.innerHTML = '<p class="estado-vazio">Erro ao carregar. Confira a conexão.</p>';
+      return;
+    }
+    gradeCache[ano] = dados;
+    if (anoAtual === ano) { // usuário pode ter trocado de ano enquanto carregava
+      gradeAtual = dados;
+      renderGrade(gradeAtual);
+    }
   }
 
+  prefetchVizinhos(ano);
+}
+
+// Busca a grade de novo em segundo plano e atualiza só se algo mudou de fato
+// e o usuário não está no meio de uma edição.
+async function revalidarGrade(ano) {
+  const dados = await chamarApiGet('grade', { ano }, true);
+  if (!dados) return;
+  if (anoAtual !== ano || gradeContainer.querySelector('input')) return;
+  if (JSON.stringify(dados) === JSON.stringify(gradeCache[ano])) return;
+  gradeCache[ano] = dados;
   gradeAtual = dados;
   renderGrade(gradeAtual);
+}
+
+// Carrega silenciosamente os anos vizinhos para que navegar até eles seja instantâneo.
+function prefetchVizinhos(ano) {
+  [ano - 1, ano + 1].forEach(a => {
+    if (anosDisponiveis.includes(a) && !gradeCache[a]) {
+      chamarApiGet('grade', { ano: a }, true).then(dados => {
+        if (dados) gradeCache[a] = dados;
+      });
+    }
+  });
 }
 
 function atualizarLabelAno() {
