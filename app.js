@@ -278,7 +278,7 @@ function linhaCategoria(cat, mapaCelulas) {
 }
 
 function linhaAdicionar(tipo) {
-  const label = tipo === 'Saída' ? '+ nova saída' : '+ nova entrada';
+  const label = tipo === 'Saída' ? '+ Nova saída' : '+ Nova entrada';
   return `<tr class="linha-adicionar"><td colspan="13"><button type="button" class="btn-add-linha" data-tipo="${tipo}">${label}</button></td></tr>`;
 }
 
