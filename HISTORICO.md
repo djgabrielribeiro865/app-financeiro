@@ -59,3 +59,11 @@ O app deixa de ser uma tela única: a topbar fixa vira uma sidebar de navegaçã
 ## Scripts SQL saem do repositório (2026-07-20)
 
 `supabase_schema.sql` e `supabase_migration_contas.sql` foram removidos — eram só scripts de uso único, pra colar no SQL Editor do Supabase e nunca mais rodar de novo, sem valor como código versionado do app. A partir de agora, quando uma mudança de banco for necessária, a query é entregue direto no terminal/chat (pra copiar e colar), em vez de criar um arquivo `.sql` no repo.
+
+## "Contas a pagar" vira "Contas do mês" + corrige rótulos do botão de criar (2026-07-20)
+
+O botão "+" e o modal de criar contas mostravam só o **ano** (ex: "Criar contas de 2026"), o que não fazia sentido numa tela que navega mês a mês — o usuário apontou que o rótulo deveria mostrar o mês específico (o atual, quando o ano ainda nem existe, ou o próximo, ao cruzar a virada de ano). Corrigido: `anoContasParaCriar()` agora também calcula o mês-alvo, e todos os textos (aria-label do botão, mensagem de estado vazio, título do modal, toast de sucesso) passam a mostrar "Julho de 2026" em vez de só "2026".
+
+De quebra, corrigido um bug relacionado: ao criar o ano a partir de um mês que não fosse dezembro (caso de bootstrap do ano atual, ainda sem nenhum grupo), o app resetava `mesContasAtual` pra Janeiro por engano — agora ele preserva corretamente o mês em que o usuário estava.
+
+O menu lateral também foi renomeado de "Contas a pagar" para **"Contas do mês"**, deixando explícito que é uma visão mensal (a pedido do usuário).

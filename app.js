@@ -103,8 +103,8 @@ btnMesAnterior.addEventListener('click', () => moverMesContas(-1));
 
 btnMesProximo.addEventListener('click', () => {
   if (btnMesProximo.dataset.modo === 'criar') {
-    const { anoAlvo, anoOrigem } = anoContasParaCriar();
-    abrirModalNovoAnoContas(anoAlvo, anoOrigem);
+    const { anoAlvo, mesAlvo, anoOrigem } = anoContasParaCriar();
+    abrirModalNovoAnoContas(anoAlvo, mesAlvo, anoOrigem);
   } else {
     moverMesContas(1);
   }
@@ -151,17 +151,18 @@ document.getElementById('formNovoAno').addEventListener('submit', async (e) => {
 document.getElementById('formNovoAnoContas').addEventListener('submit', async (e) => {
   const form = e.target;
   const anoNovo = Number(form.dataset.anoNovo);
+  const mesNovo = Number(form.dataset.mesNovo);
   const origemRaw = form.dataset.anoOrigem;
   const anoOrigem = origemRaw === '' ? null : Number(origemRaw);
   const modo = document.querySelector('input[name="modoNovoAnoContas"]:checked').value;
 
   const ok = await criarAnoContasRemoto(anoOrigem, anoNovo, modo);
   if (ok) {
-    mostrarToast(`Contas de ${anoNovo} criadas`);
+    mostrarToast(`Contas de ${rotuloMesAno(mesNovo, anoNovo)} criadas`);
     if (!anosContasDisponiveis.includes(anoNovo)) anosContasDisponiveis.push(anoNovo);
     anoContasAtual = anoNovo;
-    mesContasAtual = 1;
-    delete contasCache[`${anoNovo}-1`];
+    mesContasAtual = mesNovo;
+    delete contasCache[`${anoNovo}-${mesNovo}`];
     await carregarContas();
   } else {
     mostrarToast('Erro ao criar as contas do ano');
@@ -1023,13 +1024,20 @@ function atualizarLabelMesContas() {
   labelAnoContas.textContent = String(anoContasAtual);
 }
 
-// Mesma ideia do anoParaCriar() da grade: descobre o ano-alvo e de onde copiar.
+// Mesma ideia do anoParaCriar() da grade: descobre o ano-alvo (e o mês em que
+// o usuário vai cair depois de criado) e de onde copiar. A criação em si
+// ainda é por ano (copia grupos/itens/valores de todos os meses, como a
+// grade), mas o rótulo mostrado pro usuário é sempre o mês específico.
 function anoContasParaCriar() {
   if (!anosContasDisponiveis.includes(anoContasAtual)) {
     const origem = anosContasDisponiveis.length ? Math.max(...anosContasDisponiveis) : null;
-    return { anoAlvo: anoContasAtual, anoOrigem: origem };
+    return { anoAlvo: anoContasAtual, mesAlvo: mesContasAtual, anoOrigem: origem };
   }
-  return { anoAlvo: anoContasAtual + 1, anoOrigem: anoContasAtual };
+  return { anoAlvo: anoContasAtual + 1, mesAlvo: 1, anoOrigem: anoContasAtual };
+}
+
+function rotuloMesAno(mes, ano) {
+  return `${NOMES_MES_COMPLETO[mes - 1]} de ${ano}`;
 }
 
 function atualizarControlesMesContas() {
@@ -1040,9 +1048,10 @@ function atualizarControlesMesContas() {
   const precisaCriar = maxAno === null || (mesContasAtual === 12 && anoContasAtual >= maxAno);
 
   if (precisaCriar) {
+    const { mesAlvo, anoAlvo } = anoContasParaCriar();
     btnMesProximo.dataset.modo = 'criar';
     btnMesProximo.innerHTML = SVG_MAIS;
-    btnMesProximo.setAttribute('aria-label', 'Criar contas de ' + anoContasParaCriar().anoAlvo);
+    btnMesProximo.setAttribute('aria-label', 'Criar contas de ' + rotuloMesAno(mesAlvo, anoAlvo));
     btnMesProximo.classList.add('criar');
   } else {
     btnMesProximo.dataset.modo = 'nav';
@@ -1054,15 +1063,16 @@ function atualizarControlesMesContas() {
 
 function renderContasVazias() {
   resumoContas.hidden = true;
-  const { anoAlvo, anoOrigem } = anoContasParaCriar();
+  const { anoAlvo, mesAlvo, anoOrigem } = anoContasParaCriar();
+  const rotulo = rotuloMesAno(mesContasAtual, anoContasAtual);
   contasContainer.innerHTML = `
     <div class="grade-vazia">
-      <p>As contas de ${NOMES_MES_COMPLETO[mesContasAtual - 1]} de ${anoContasAtual} ainda não foram criadas.</p>
-      <button type="button" class="btn-primario" id="btnCriarAnoContasInline">Criar contas de ${anoContasAtual}</button>
+      <p>As contas de ${rotulo} ainda não foram criadas.</p>
+      <button type="button" class="btn-primario" id="btnCriarAnoContasInline">Criar contas de ${rotulo}</button>
     </div>
   `;
   document.getElementById('btnCriarAnoContasInline').addEventListener('click', () => {
-    abrirModalNovoAnoContas(anoAlvo, anoOrigem);
+    abrirModalNovoAnoContas(anoAlvo, mesAlvo, anoOrigem);
   });
 }
 
@@ -1311,12 +1321,13 @@ function ativarAdicionarItem(btn) {
   input.addEventListener('blur', () => renderContas(contasAtual));
 }
 
-function abrirModalNovoAnoContas(anoNovo, anoOrigem) {
+function abrirModalNovoAnoContas(anoNovo, mesNovo, anoOrigem) {
   const form = document.getElementById('formNovoAnoContas');
   form.reset();
   form.dataset.anoNovo = anoNovo;
+  form.dataset.mesNovo = mesNovo;
   form.dataset.anoOrigem = (anoOrigem === null || anoOrigem === undefined) ? '' : anoOrigem;
-  document.getElementById('labelNovoAnoContas').textContent = anoNovo;
+  document.getElementById('labelNovoAnoContas').textContent = rotuloMesAno(mesNovo, anoNovo);
 
   const radioCopiar = form.querySelector('input[value="copiar"]');
   const opcaoCopiar = radioCopiar.closest('.opcao-radio');
