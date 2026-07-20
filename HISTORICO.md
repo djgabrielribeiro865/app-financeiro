@@ -49,11 +49,9 @@ No topbar, o indicador do usuário logado passou a mostrar o nome (`user_metadat
 
 ## Menu lateral + tela "Contas a pagar" (2026-07-20)
 
-O app deixa de ser uma tela única: a topbar fixa vira uma sidebar de navegação (drawer em telas estreitas, persistente em telas largas) com dois itens — "Grade anual" (a tela que já existia) e a nova "Contas a pagar".
+O app deixa de ser uma tela única: a topbar fixa vira uma sidebar de navegação com dois itens — "Grade anual" (a tela que já existia) e a nova "Contas a pagar". A sidebar funciona como um **drawer minimizável em qualquer tamanho de tela** (não só no mobile — versão inicial deixava fixa/sempre aberta no desktop, mas o usuário pediu pra minimizar em qualquer tela): fica escondida por padrão, abre pelo botão hambúrguer (sempre visível numa topbar fina no topo) e fecha sozinha a cada seleção de item do menu.
 
 - **Contas a pagar**: checklist vertical de contas (água, luz, cartão...) agrupadas por categoria (ex: "Apartamento" com Condomínio, Água, Luz, Internet Vivo), cada item com checkbox de pago/não pago e um valor opcional — alguns itens têm valor controlado, outros só o status de pago, conforme pedido pelo usuário.
 - Navegação por **mês** (não por ano como a grade), já que contas são mensais. Ao cruzar pra um ano ainda sem grupos criados, mesmo fluxo de "criar ano" já usado na grade: copiar grupos/itens/valores do ano anterior ou começar zerado.
 - Modelo de dados novo no Supabase (`supabase_migration_contas.sql`): `bill_years` (registro de quais anos foram criados — necessário porque, ao contrário da grade, um ano de contas pode legitimamente começar com zero grupos, então não dava pra derivar "ano existe" só olhando se há grupos), `bill_groups`, `bill_items`, `bill_entries` (estado por mês: pago + valor opcional), todas com RLS por `user_id`.
 - Reaproveita a lógica e boa parte do CSS já existentes na grade (edição inline de valor, confirmação ao excluir, cache em memória por mês, padrão visual do card de resumo) em vez de introduzir padrões novos.
-
-A pedido do usuário, a sidebar virou um drawer (fecha sozinha a cada seleção de item do menu, abre com o botão hambúrguer) em **qualquer** tamanho de tela, não só no mobile como na primeira versão — o botão hambúrguer agora fica sempre visível numa topbar fina no topo.
