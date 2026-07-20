@@ -55,3 +55,7 @@ O app deixa de ser uma tela única: a topbar fixa vira uma sidebar de navegaçã
 - Navegação por **mês** (não por ano como a grade), já que contas são mensais. Ao cruzar pra um ano ainda sem grupos criados, mesmo fluxo de "criar ano" já usado na grade: copiar grupos/itens/valores do ano anterior ou começar zerado.
 - Modelo de dados novo no Supabase (`supabase_migration_contas.sql`): `bill_years` (registro de quais anos foram criados — necessário porque, ao contrário da grade, um ano de contas pode legitimamente começar com zero grupos, então não dava pra derivar "ano existe" só olhando se há grupos), `bill_groups`, `bill_items`, `bill_entries` (estado por mês: pago + valor opcional), todas com RLS por `user_id`.
 - Reaproveita a lógica e boa parte do CSS já existentes na grade (edição inline de valor, confirmação ao excluir, cache em memória por mês, padrão visual do card de resumo) em vez de introduzir padrões novos.
+
+## Scripts SQL saem do repositório (2026-07-20)
+
+`supabase_schema.sql` e `supabase_migration_contas.sql` foram removidos — eram só scripts de uso único, pra colar no SQL Editor do Supabase e nunca mais rodar de novo, sem valor como código versionado do app. A partir de agora, quando uma mudança de banco for necessária, a query é entregue direto no terminal/chat (pra copiar e colar), em vez de criar um arquivo `.sql` no repo.
