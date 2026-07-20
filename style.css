@@ -32,6 +32,11 @@
 
 * { box-sizing: border-box; }
 
+/* Garante que [hidden] sempre vença regras de display de classes (ex:
+   .login-overlay usa display:flex, que empata em especificidade com o
+   [hidden] padrão do navegador e venceria por vir depois no CSS). */
+[hidden] { display: none !important; }
+
 html, body {
   margin: 0;
   padding: 0;

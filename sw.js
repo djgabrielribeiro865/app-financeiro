@@ -1,6 +1,6 @@
 // Ao publicar mudanças em style.css/app.js, incremente o número aqui E no
 // ?v= dos <link>/<script> do index.html (mantê-los iguais evita cache velho).
-const VERSAO_ASSETS = '12';
+const VERSAO_ASSETS = '13';
 const CACHE_NAME = 'controle-financeiro-v' + VERSAO_ASSETS;
 const ARQUIVOS_SHELL = [
   './',
