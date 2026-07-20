@@ -7,12 +7,22 @@ const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 // ---------- ESTADO ----------
 
 let usuarioAtual = null;
+let telaAtiva = 'grade';
+
 let anoAtual = new Date().getFullYear();
 let anosDisponiveis = [];
 let gradeAtual = null;
 const gradeCache = {}; // ano -> dados da grade (evita rebuscar na rede)
 
+let anoContasAtual = new Date().getFullYear();
+let mesContasAtual = new Date().getMonth() + 1;
+let anosContasDisponiveis = [];
+let contasAtual = null;
+let contasInicializada = false;
+const contasCache = {}; // "ano-mes" -> dados
+
 const NOMES_MES_ABREV = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+const NOMES_MES_COMPLETO = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 const ANO_CALENDARIO = new Date().getFullYear();
 const MES_CALENDARIO = new Date().getMonth() + 1;
 
@@ -28,6 +38,7 @@ const SVG_SETA_DIREITA = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M
 const SVG_MAIS = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>';
 
 const modalNovoAno = document.getElementById('modalNovoAno');
+const modalNovoAnoContas = document.getElementById('modalNovoAnoContas');
 const toast = document.getElementById('toast');
 
 const appRoot = document.getElementById('appRoot');
@@ -36,6 +47,20 @@ const loginOverlay = document.getElementById('loginOverlay');
 const btnLoginGoogle = document.getElementById('btnLoginGoogle');
 const btnLogout = document.getElementById('btnLogout');
 const infoUsuario = document.getElementById('infoUsuario');
+
+const btnMenuMobile = document.getElementById('btnMenuMobile');
+const sidebar = document.getElementById('sidebar');
+const sidebarOverlay = document.getElementById('sidebarOverlay');
+const navItems = document.querySelectorAll('.nav-item');
+const telaGrade = document.getElementById('telaGrade');
+const telaContas = document.getElementById('telaContas');
+
+const btnMesAnterior = document.getElementById('btnMesAnterior');
+const btnMesProximo = document.getElementById('btnMesProximo');
+const labelMesContas = document.getElementById('labelMesContas');
+const labelAnoContas = document.getElementById('labelAnoContas');
+const resumoContas = document.getElementById('resumoContas');
+const contasContainer = document.getElementById('contasContainer');
 
 // ---------- INIT ----------
 
@@ -74,9 +99,35 @@ btnAnoProximo.addEventListener('click', () => {
   }
 });
 
+btnMesAnterior.addEventListener('click', () => moverMesContas(-1));
+
+btnMesProximo.addEventListener('click', () => {
+  if (btnMesProximo.dataset.modo === 'criar') {
+    const { anoAlvo, anoOrigem } = anoContasParaCriar();
+    abrirModalNovoAnoContas(anoAlvo, anoOrigem);
+  } else {
+    moverMesContas(1);
+  }
+});
+
+navItems.forEach(btn => {
+  btn.addEventListener('click', () => {
+    mostrarTela(btn.dataset.tela);
+    fecharSidebarMobile();
+  });
+});
+
+btnMenuMobile.addEventListener('click', () => {
+  sidebar.classList.add('aberta');
+  sidebarOverlay.hidden = false;
+});
+
+sidebarOverlay.addEventListener('click', fecharSidebarMobile);
+
 btnLoginGoogle.addEventListener('click', entrarComGoogle);
 btnLogout.addEventListener('click', sair);
 document.getElementById('btnCancelarNovoAno').addEventListener('click', () => modalNovoAno.close());
+document.getElementById('btnCancelarNovoAnoContas').addEventListener('click', () => modalNovoAnoContas.close());
 
 document.getElementById('formNovoAno').addEventListener('submit', async (e) => {
   const form = e.target;
@@ -96,6 +147,47 @@ document.getElementById('formNovoAno').addEventListener('submit', async (e) => {
     mostrarToast('Erro ao criar o novo ano');
   }
 });
+
+document.getElementById('formNovoAnoContas').addEventListener('submit', async (e) => {
+  const form = e.target;
+  const anoNovo = Number(form.dataset.anoNovo);
+  const origemRaw = form.dataset.anoOrigem;
+  const anoOrigem = origemRaw === '' ? null : Number(origemRaw);
+  const modo = document.querySelector('input[name="modoNovoAnoContas"]:checked').value;
+
+  const ok = await criarAnoContasRemoto(anoOrigem, anoNovo, modo);
+  if (ok) {
+    mostrarToast(`Contas de ${anoNovo} criadas`);
+    if (!anosContasDisponiveis.includes(anoNovo)) anosContasDisponiveis.push(anoNovo);
+    anoContasAtual = anoNovo;
+    mesContasAtual = 1;
+    delete contasCache[`${anoNovo}-1`];
+    await carregarContas();
+  } else {
+    mostrarToast('Erro ao criar as contas do ano');
+  }
+});
+
+// ---------- NAVEGAÇÃO (MENU LATERAL) ----------
+
+function mostrarTela(tela) {
+  telaAtiva = tela;
+  telaGrade.hidden = tela !== 'grade';
+  telaContas.hidden = tela !== 'contas';
+  navItems.forEach(btn => {
+    if (btn.dataset.tela === tela) btn.setAttribute('aria-current', 'page');
+    else btn.removeAttribute('aria-current');
+  });
+  if (tela === 'contas' && !contasInicializada) {
+    contasInicializada = true;
+    carregarTudoContas();
+  }
+}
+
+function fecharSidebarMobile() {
+  sidebar.classList.remove('aberta');
+  sidebarOverlay.hidden = true;
+}
 
 // ---------- AUTENTICAÇÃO ----------
 
@@ -671,6 +763,571 @@ function ativarAdicionarLinha(btn) {
   });
 
   input.addEventListener('blur', () => renderGrade(gradeAtual));
+}
+
+// ---------- CONTAS A PAGAR: DADOS (SUPABASE) ----------
+
+async function buscarAnosContas() {
+  const { data, error } = await sb.from('bill_years').select('year').order('year');
+  if (error) {
+    mostrarToast('Erro ao carregar anos de contas');
+    return [];
+  }
+  return data.map(r => r.year);
+}
+
+async function buscarContas(ano, mes) {
+  const { data: grupos, error: errGrupos } = await sb
+    .from('bill_groups')
+    .select('id, name')
+    .eq('year', ano)
+    .order('created_at');
+  if (errGrupos) {
+    mostrarToast('Erro ao carregar grupos de contas');
+    return null;
+  }
+
+  const grupoIds = grupos.map(g => g.id);
+  let itens = [];
+  if (grupoIds.length) {
+    const { data, error: errItens } = await sb
+      .from('bill_items')
+      .select('id, name, group_id')
+      .in('group_id', grupoIds)
+      .order('created_at');
+    if (errItens) {
+      mostrarToast('Erro ao carregar itens de contas');
+      return null;
+    }
+    itens = data;
+  }
+
+  const itemIds = itens.map(i => i.id);
+  let entradas = [];
+  if (itemIds.length) {
+    const { data, error: errEnt } = await sb
+      .from('bill_entries')
+      .select('item_id, paid, value')
+      .in('item_id', itemIds)
+      .eq('month', mes);
+    if (errEnt) {
+      mostrarToast('Erro ao carregar contas do mês');
+      return null;
+    }
+    entradas = data;
+  }
+
+  const entradaPorItem = {};
+  entradas.forEach(e => {
+    entradaPorItem[e.item_id] = { pago: e.paid, valor: e.value === null ? null : Number(e.value) };
+  });
+
+  const grupos_ = grupos.map(g => ({
+    id: g.id,
+    nome: g.name,
+    itens: itens
+      .filter(i => i.group_id === g.id)
+      .map(i => ({
+        id: i.id,
+        nome: i.name,
+        pago: entradaPorItem[i.id] ? entradaPorItem[i.id].pago : false,
+        valor: entradaPorItem[i.id] ? entradaPorItem[i.id].valor : null
+      }))
+  }));
+
+  return { grupos: grupos_ };
+}
+
+async function alternarPagoRemoto(itemId, mes, pago) {
+  const { error } = await sb
+    .from('bill_entries')
+    .upsert(
+      { item_id: itemId, month: mes, paid: pago, updated_at: new Date().toISOString() },
+      { onConflict: 'item_id,month' }
+    );
+  return !error;
+}
+
+async function salvarValorContaRemoto(itemId, mes, valor) {
+  const valorFinal = (valor === null || valor === undefined || valor === '') ? null : Number(valor);
+  const { error } = await sb
+    .from('bill_entries')
+    .upsert(
+      { item_id: itemId, month: mes, value: valorFinal, updated_at: new Date().toISOString() },
+      { onConflict: 'item_id,month' }
+    );
+  return !error;
+}
+
+async function criarGrupoRemoto(nome, ano) {
+  const { data, error } = await sb
+    .from('bill_groups')
+    .insert({ year: ano, name: nome })
+    .select('id')
+    .single();
+  if (error) return null;
+  return data.id;
+}
+
+async function apagarGrupoRemoto(grupoId) {
+  const { error } = await sb.from('bill_groups').delete().eq('id', grupoId);
+  return !error;
+}
+
+async function criarItemContaRemoto(nome, grupoId) {
+  const { data, error } = await sb
+    .from('bill_items')
+    .insert({ group_id: grupoId, name: nome })
+    .select('id')
+    .single();
+  if (error) return null;
+  return data.id;
+}
+
+async function apagarItemContaRemoto(itemId) {
+  const { error } = await sb.from('bill_items').delete().eq('id', itemId);
+  return !error;
+}
+
+async function criarAnoContasRemoto(anoOrigem, anoNovo, modo) {
+  const { error: errAno } = await sb.from('bill_years').insert({ year: anoNovo });
+  if (errAno) return false;
+
+  if (anoOrigem === null || anoOrigem === undefined) return true;
+
+  const { data: gruposOrigem, error: errGrupos } = await sb
+    .from('bill_groups')
+    .select('id, name')
+    .eq('year', anoOrigem);
+  if (errGrupos) return false;
+  if (!gruposOrigem.length) return true;
+
+  const novosGrupos = gruposOrigem.map(g => ({ year: anoNovo, name: g.name }));
+  const { data: gruposCriados, error: errInsGrupos } = await sb
+    .from('bill_groups')
+    .insert(novosGrupos)
+    .select('id, name');
+  if (errInsGrupos) return false;
+
+  const idNovoGrupoPorNome = Object.fromEntries(gruposCriados.map(g => [g.name, g.id]));
+  const nomeGrupoPorIdOrigem = Object.fromEntries(gruposOrigem.map(g => [g.id, g.name]));
+  const grupoIdsOrigem = gruposOrigem.map(g => g.id);
+
+  const { data: itensOrigem, error: errItens } = await sb
+    .from('bill_items')
+    .select('id, name, group_id')
+    .in('group_id', grupoIdsOrigem);
+  if (errItens) return false;
+  if (!itensOrigem.length) return true;
+
+  const novosItens = itensOrigem.map(i => ({
+    name: i.name,
+    group_id: idNovoGrupoPorNome[nomeGrupoPorIdOrigem[i.group_id]]
+  }));
+  const { data: itensCriados, error: errInsItens } = await sb
+    .from('bill_items')
+    .insert(novosItens)
+    .select('id, name, group_id');
+  if (errInsItens) return false;
+
+  if (modo !== 'copiar') return true;
+
+  const grupoNomePorIdNovo = Object.fromEntries(gruposCriados.map(g => [g.id, g.name]));
+  const idNovoItemPorChave = {};
+  itensCriados.forEach(i => {
+    const chave = `${grupoNomePorIdNovo[i.group_id]}|${i.name}`;
+    idNovoItemPorChave[chave] = i.id;
+  });
+
+  const idNovoItemPorIdOrigem = {};
+  itensOrigem.forEach(i => {
+    const chave = `${nomeGrupoPorIdOrigem[i.group_id]}|${i.name}`;
+    idNovoItemPorIdOrigem[i.id] = idNovoItemPorChave[chave];
+  });
+
+  const itemIdsOrigem = itensOrigem.map(i => i.id);
+  const { data: entradasOrigem, error: errEnt } = await sb
+    .from('bill_entries')
+    .select('item_id, month, paid, value')
+    .in('item_id', itemIdsOrigem);
+  if (errEnt) return false;
+
+  const novasEntradas = entradasOrigem
+    .map(e => ({
+      item_id: idNovoItemPorIdOrigem[e.item_id],
+      month: e.month,
+      paid: e.paid,
+      value: e.value
+    }))
+    .filter(e => e.item_id);
+
+  if (novasEntradas.length) {
+    const { error: errInsEnt } = await sb.from('bill_entries').insert(novasEntradas);
+    if (errInsEnt) return false;
+  }
+
+  return true;
+}
+
+// ---------- CONTAS A PAGAR: CARREGAMENTO ----------
+
+async function carregarTudoContas() {
+  const anos = await buscarAnosContas();
+  anosContasDisponiveis = anos;
+  const hoje = new Date();
+  anoContasAtual = anos.includes(hoje.getFullYear()) ? hoje.getFullYear() : (anos.length ? Math.max(...anos) : hoje.getFullYear());
+  mesContasAtual = anoContasAtual === hoje.getFullYear() ? (hoje.getMonth() + 1) : 1;
+  await carregarContas();
+}
+
+async function carregarContas() {
+  atualizarLabelMesContas();
+  atualizarControlesMesContas();
+  resumoContas.hidden = true;
+
+  const maxAno = anosContasDisponiveis.length ? Math.max(...anosContasDisponiveis) : anoContasAtual - 1;
+  if (anoContasAtual > maxAno || !anosContasDisponiveis.includes(anoContasAtual)) {
+    renderContasVazias();
+    return;
+  }
+
+  const chave = `${anoContasAtual}-${mesContasAtual}`;
+
+  if (contasCache[chave]) {
+    contasAtual = contasCache[chave];
+    renderContas(contasAtual);
+  } else {
+    contasContainer.innerHTML = '<p class="estado-vazio">Carregando…</p>';
+    const dados = await buscarContas(anoContasAtual, mesContasAtual);
+    if (!dados) {
+      contasContainer.innerHTML = '<p class="estado-vazio">Erro ao carregar. Confira a conexão.</p>';
+      return;
+    }
+    contasCache[chave] = dados;
+    if (`${anoContasAtual}-${mesContasAtual}` === chave) {
+      contasAtual = dados;
+      renderContas(contasAtual);
+    }
+  }
+}
+
+function moverMesContas(delta) {
+  mesContasAtual += delta;
+  if (mesContasAtual < 1) { mesContasAtual = 12; anoContasAtual--; }
+  if (mesContasAtual > 12) { mesContasAtual = 1; anoContasAtual++; }
+  carregarContas();
+}
+
+function atualizarLabelMesContas() {
+  labelMesContas.textContent = NOMES_MES_COMPLETO[mesContasAtual - 1];
+  labelAnoContas.textContent = String(anoContasAtual);
+}
+
+// Mesma ideia do anoParaCriar() da grade: descobre o ano-alvo e de onde copiar.
+function anoContasParaCriar() {
+  if (!anosContasDisponiveis.includes(anoContasAtual)) {
+    const origem = anosContasDisponiveis.length ? Math.max(...anosContasDisponiveis) : null;
+    return { anoAlvo: anoContasAtual, anoOrigem: origem };
+  }
+  return { anoAlvo: anoContasAtual + 1, anoOrigem: anoContasAtual };
+}
+
+function atualizarControlesMesContas() {
+  const minAno = anosContasDisponiveis.length ? Math.min(...anosContasDisponiveis) : anoContasAtual;
+  btnMesAnterior.disabled = anoContasAtual <= minAno && mesContasAtual === 1;
+
+  const maxAno = anosContasDisponiveis.length ? Math.max(...anosContasDisponiveis) : null;
+  const precisaCriar = maxAno === null || (mesContasAtual === 12 && anoContasAtual >= maxAno);
+
+  if (precisaCriar) {
+    btnMesProximo.dataset.modo = 'criar';
+    btnMesProximo.innerHTML = SVG_MAIS;
+    btnMesProximo.setAttribute('aria-label', 'Criar contas de ' + anoContasParaCriar().anoAlvo);
+    btnMesProximo.classList.add('criar');
+  } else {
+    btnMesProximo.dataset.modo = 'nav';
+    btnMesProximo.innerHTML = SVG_SETA_DIREITA;
+    btnMesProximo.setAttribute('aria-label', 'Próximo mês');
+    btnMesProximo.classList.remove('criar');
+  }
+}
+
+function renderContasVazias() {
+  resumoContas.hidden = true;
+  const { anoAlvo, anoOrigem } = anoContasParaCriar();
+  contasContainer.innerHTML = `
+    <div class="grade-vazia">
+      <p>As contas de ${NOMES_MES_COMPLETO[mesContasAtual - 1]} de ${anoContasAtual} ainda não foram criadas.</p>
+      <button type="button" class="btn-primario" id="btnCriarAnoContasInline">Criar contas de ${anoContasAtual}</button>
+    </div>
+  `;
+  document.getElementById('btnCriarAnoContasInline').addEventListener('click', () => {
+    abrirModalNovoAnoContas(anoAlvo, anoOrigem);
+  });
+}
+
+// ---------- CONTAS A PAGAR: RENDER ----------
+
+function renderResumoContas(totalPagos, totalItens, somaPago, somaTotal) {
+  if (!totalItens) {
+    resumoContas.hidden = true;
+    return;
+  }
+  const somaPendente = somaTotal - somaPago;
+  resumoContas.innerHTML = `
+    <div class="resumo-topo">
+      <span class="resumo-rotulo">Contas pagas</span>
+      <span class="resumo-saldo positivo">${totalPagos}/${totalItens}</span>
+    </div>
+    <div class="resumo-linhas">
+      <div class="resumo-item ent">
+        <span class="rot">Pago</span>
+        <span class="val">${formatarMoeda(somaPago)}</span>
+      </div>
+      <div class="resumo-item sai">
+        <span class="rot">Pendente</span>
+        <span class="val">${formatarMoeda(somaPendente)}</span>
+      </div>
+    </div>
+  `;
+  resumoContas.hidden = false;
+}
+
+function renderContas(dados) {
+  let totalItens = 0;
+  let totalPagos = 0;
+  let somaValor = 0;
+  let somaPago = 0;
+
+  dados.grupos.forEach(g => {
+    g.itens.forEach(i => {
+      totalItens++;
+      if (i.pago) totalPagos++;
+      if (typeof i.valor === 'number') {
+        somaValor += i.valor;
+        if (i.pago) somaPago += i.valor;
+      }
+    });
+  });
+
+  renderResumoContas(totalPagos, totalItens, somaPago, somaValor);
+
+  let html = '';
+  if (!dados.grupos.length) {
+    html = '<div class="grade-vazia"><p>Nenhum grupo de contas ainda.</p></div>';
+  } else {
+    dados.grupos.forEach(g => { html += grupoContasHtml(g); });
+  }
+  html += '<div class="rodape-contas"><button type="button" class="btn-add-linha" id="btnAddGrupo">+ Novo grupo</button></div>';
+
+  contasContainer.innerHTML = html;
+
+  contasContainer.querySelectorAll('.checkbox-pago').forEach(cb => {
+    cb.addEventListener('change', () => alternarPago(cb.dataset.item, cb.checked));
+  });
+  contasContainer.querySelectorAll('.linha-conta-valor').forEach(el => {
+    el.addEventListener('click', () => ativarEdicaoValorConta(el));
+  });
+  contasContainer.querySelectorAll('.btn-excluir-linha[data-item]').forEach(btn => {
+    btn.addEventListener('click', () => excluirItemConta(btn.dataset.item));
+  });
+  contasContainer.querySelectorAll('.btn-excluir-linha[data-grupo]').forEach(btn => {
+    btn.addEventListener('click', () => excluirGrupo(btn.dataset.grupo));
+  });
+  contasContainer.querySelectorAll('.btn-add-item').forEach(btn => {
+    btn.addEventListener('click', () => ativarAdicionarItem(btn));
+  });
+  document.getElementById('btnAddGrupo').addEventListener('click', ativarAdicionarGrupo);
+}
+
+function grupoContasHtml(g) {
+  let html = `<div class="grupo-contas">
+    <div class="grupo-contas-cabecalho">
+      <span class="grupo-contas-nome">${g.nome}</span>
+      <button type="button" class="btn-excluir-linha" data-grupo="${g.id}" aria-label="Excluir grupo">×</button>
+    </div>`;
+  g.itens.forEach(i => { html += linhaContaHtml(i); });
+  html += `<div class="linha-item-adicionar"><button type="button" class="btn-add-linha btn-add-item" data-grupo="${g.id}">+ Novo item</button></div>`;
+  html += '</div>';
+  return html;
+}
+
+function linhaContaHtml(item) {
+  const pagoCls = item.pago ? ' pago' : '';
+  const valorTxt = typeof item.valor === 'number' ? formatarMoeda(item.valor) : '';
+  return `<div class="linha-conta${pagoCls}">
+    <input type="checkbox" class="checkbox-pago" data-item="${item.id}" ${item.pago ? 'checked' : ''}>
+    <span class="linha-conta-nome">${item.nome}</span>
+    <span class="linha-conta-valor" data-item="${item.id}">${valorTxt}</span>
+    <button type="button" class="btn-excluir-linha" data-item="${item.id}" aria-label="Excluir item">×</button>
+  </div>`;
+}
+
+// ---------- CONTAS A PAGAR: EDIÇÃO ----------
+
+function encontrarItemConta(itemId) {
+  for (const g of contasAtual.grupos) {
+    const item = g.itens.find(i => i.id === itemId);
+    if (item) return item;
+  }
+  return null;
+}
+
+function atualizarItemContaCache(itemId, patch) {
+  const item = encontrarItemConta(itemId);
+  if (item) Object.assign(item, patch);
+}
+
+async function alternarPago(itemId, pago) {
+  const ok = await alternarPagoRemoto(itemId, mesContasAtual, pago);
+  if (ok) {
+    atualizarItemContaCache(itemId, { pago });
+  } else {
+    mostrarToast('Erro ao atualizar');
+  }
+  renderContas(contasAtual);
+}
+
+function ativarEdicaoValorConta(el) {
+  if (el.querySelector('input')) return;
+
+  const itemId = el.dataset.item;
+  const item = encontrarItemConta(itemId);
+  const valorInicial = typeof item.valor === 'number' ? item.valor : '';
+
+  el.innerHTML = '';
+  const input = document.createElement('input');
+  input.type = 'number';
+  input.step = '0.01';
+  input.inputMode = 'decimal';
+  input.className = 'input-celula';
+  input.value = valorInicial;
+  el.appendChild(input);
+  input.focus();
+  input.select();
+
+  let cancelado = false;
+
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      input.blur();
+    } else if (e.key === 'Escape') {
+      cancelado = true;
+      renderContas(contasAtual);
+    }
+  });
+
+  input.addEventListener('blur', async () => {
+    if (cancelado) return;
+    const bruto = input.value.trim();
+    const valor = bruto === '' ? null : parseFloat(bruto);
+    const ok = await salvarValorContaRemoto(itemId, mesContasAtual, valor);
+    if (ok) {
+      atualizarItemContaCache(itemId, { valor });
+    } else {
+      mostrarToast('Erro ao salvar. Confira a conexão.');
+    }
+    renderContas(contasAtual);
+  });
+}
+
+// ---------- CONTAS A PAGAR: GRUPOS E ITENS ----------
+
+async function excluirGrupo(grupoId) {
+  const grupo = contasAtual.grupos.find(g => g.id === grupoId);
+  if (!grupo) return;
+  if (!confirm(`Excluir "${grupo.nome}"? Todos os itens e valores lançados nesse grupo também serão apagados. Essa ação não pode ser desfeita.`)) return;
+  const ok = await apagarGrupoRemoto(grupoId);
+  if (ok) {
+    contasAtual.grupos = contasAtual.grupos.filter(g => g.id !== grupoId);
+    renderContas(contasAtual);
+  } else {
+    mostrarToast('Erro ao excluir grupo');
+  }
+}
+
+async function excluirItemConta(itemId) {
+  const item = encontrarItemConta(itemId);
+  if (!item) return;
+  if (!confirm(`Excluir "${item.nome}"? Essa ação não pode ser desfeita.`)) return;
+  const ok = await apagarItemContaRemoto(itemId);
+  if (ok) {
+    contasAtual.grupos.forEach(g => { g.itens = g.itens.filter(i => i.id !== itemId); });
+    renderContas(contasAtual);
+  } else {
+    mostrarToast('Erro ao excluir item');
+  }
+}
+
+function ativarAdicionarGrupo() {
+  const wrapper = document.querySelector('.rodape-contas');
+  wrapper.innerHTML = '<input type="text" class="input-nova-linha" placeholder="Nome do grupo">';
+  const input = wrapper.querySelector('input');
+  input.focus();
+
+  input.addEventListener('keydown', async (e) => {
+    if (e.key === 'Enter') {
+      const nome = input.value.trim();
+      if (nome) {
+        const id = await criarGrupoRemoto(nome, anoContasAtual);
+        if (id) {
+          contasAtual.grupos.push({ id, nome, itens: [] });
+        } else {
+          mostrarToast('Erro ao adicionar grupo');
+        }
+      }
+      renderContas(contasAtual);
+    } else if (e.key === 'Escape') {
+      renderContas(contasAtual);
+    }
+  });
+  input.addEventListener('blur', () => renderContas(contasAtual));
+}
+
+function ativarAdicionarItem(btn) {
+  const grupoId = btn.dataset.grupo;
+  const wrapper = btn.closest('.linha-item-adicionar');
+  wrapper.innerHTML = '<input type="text" class="input-nova-linha" placeholder="Nome do item">';
+  const input = wrapper.querySelector('input');
+  input.focus();
+
+  input.addEventListener('keydown', async (e) => {
+    if (e.key === 'Enter') {
+      const nome = input.value.trim();
+      if (nome) {
+        const id = await criarItemContaRemoto(nome, grupoId);
+        if (id) {
+          const grupo = contasAtual.grupos.find(g => g.id === grupoId);
+          grupo.itens.push({ id, nome, pago: false, valor: null });
+        } else {
+          mostrarToast('Erro ao adicionar item');
+        }
+      }
+      renderContas(contasAtual);
+    } else if (e.key === 'Escape') {
+      renderContas(contasAtual);
+    }
+  });
+  input.addEventListener('blur', () => renderContas(contasAtual));
+}
+
+function abrirModalNovoAnoContas(anoNovo, anoOrigem) {
+  const form = document.getElementById('formNovoAnoContas');
+  form.reset();
+  form.dataset.anoNovo = anoNovo;
+  form.dataset.anoOrigem = (anoOrigem === null || anoOrigem === undefined) ? '' : anoOrigem;
+  document.getElementById('labelNovoAnoContas').textContent = anoNovo;
+
+  const radioCopiar = form.querySelector('input[value="copiar"]');
+  const opcaoCopiar = radioCopiar.closest('.opcao-radio');
+  if (anoOrigem === null || anoOrigem === undefined) {
+    opcaoCopiar.hidden = true;
+    form.querySelector('input[value="zerado"]').checked = true;
+  } else {
+    opcaoCopiar.hidden = false;
+    radioCopiar.checked = true;
+  }
+  modalNovoAnoContas.showModal();
 }
 
 // ---------- MODAIS ----------

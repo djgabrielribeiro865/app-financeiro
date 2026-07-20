@@ -59,20 +59,12 @@ body {
 
 button { font-family: inherit; }
 
-/* ---------- TOPBAR ---------- */
+/* ---------- LAYOUT (SIDEBAR + CONTEÚDO) ---------- */
 
-.topbar {
+#appRoot {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: calc(env(safe-area-inset-top, 0px) + 16px) 18px 14px;
-  position: sticky;
-  top: 0;
-  z-index: 20;
-  background: rgba(15, 15, 17, 0.82);
-  backdrop-filter: saturate(140%) blur(14px);
-  -webkit-backdrop-filter: saturate(140%) blur(14px);
-  border-bottom: 1px solid var(--border-soft);
+  align-items: flex-start;
+  min-height: 100vh;
 }
 
 .brand {
@@ -87,6 +79,7 @@ button { font-family: inherit; }
   border-radius: 5px;
   background: linear-gradient(145deg, var(--laranja-claro), var(--laranja));
   box-shadow: 0 0 14px rgba(245, 130, 32, 0.55);
+  flex-shrink: 0;
 }
 
 .brand-nome {
@@ -95,9 +88,135 @@ button { font-family: inherit; }
   letter-spacing: 0.01em;
 }
 
-.topbar-acoes {
+.topbar-mobile {
+  display: none;
+  align-items: center;
+  gap: 14px;
+  padding: calc(env(safe-area-inset-top, 0px) + 16px) 18px 14px;
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  width: 100%;
+  background: rgba(15, 15, 17, 0.82);
+  backdrop-filter: saturate(140%) blur(14px);
+  -webkit-backdrop-filter: saturate(140%) blur(14px);
+  border-bottom: 1px solid var(--border-soft);
+}
+
+.sidebar-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(6, 6, 8, 0.6);
+  z-index: 29;
+}
+
+.sidebar {
+  width: 240px;
+  flex-shrink: 0;
   display: flex;
-  gap: 6px;
+  flex-direction: column;
+  background: var(--surface);
+  border-right: 1px solid var(--border-soft);
+  padding: 22px 14px calc(env(safe-area-inset-bottom, 0px) + 16px);
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  z-index: 30;
+}
+
+.sidebar-topo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 8px;
+  margin-bottom: 28px;
+}
+
+.sidebar-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 12px;
+  border-radius: 11px;
+  background: none;
+  border: none;
+  color: var(--texto-mudo);
+  font-size: 14px;
+  font-weight: 550;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.15s, color 0.15s;
+}
+
+.nav-item svg {
+  width: 19px;
+  height: 19px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  flex-shrink: 0;
+}
+
+.nav-item:active {
+  background: var(--surface-2);
+}
+
+.nav-item[aria-current="page"] {
+  background: var(--laranja-suave);
+  color: var(--laranja-claro);
+}
+
+.sidebar-rodape {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 14px 8px 0;
+  border-top: 1px solid var(--border-soft);
+  margin-top: 12px;
+}
+
+.sidebar-rodape .info-usuario {
+  display: block;
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.conteudo-app {
+  flex: 1;
+  min-width: 0;
+}
+
+.tela { display: block; }
+
+@media (max-width: 880px) {
+  #appRoot { display: block; }
+
+  .topbar-mobile { display: flex; }
+
+  .sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    transform: translateX(-100%);
+    transition: transform 0.22s ease;
+    box-shadow: 0 0 40px rgba(0, 0, 0, 0.5);
+  }
+
+  .sidebar.aberta {
+    transform: translateX(0);
+  }
 }
 
 .icon-btn {
@@ -583,6 +702,91 @@ main {
 }
 .tabela-grade tfoot .linha-saldo .negativo { color: var(--saida); }
 
+/* ---------- CONTAS A PAGAR ---------- */
+
+.contas-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.grupo-contas {
+  border: 1px solid var(--border);
+  border-radius: var(--raio);
+  background: var(--surface);
+  overflow: hidden;
+  box-shadow: var(--sombra);
+}
+
+.grupo-contas-cabecalho {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 13px 16px;
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--border-soft);
+}
+
+.grupo-contas-nome {
+  font-size: 12px;
+  font-weight: 650;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--texto-mudo);
+}
+
+.linha-conta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 13px 16px;
+  border-bottom: 1px solid var(--border-soft);
+}
+
+.linha-item-adicionar { padding: 8px 16px 12px; }
+
+.checkbox-pago {
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+  accent-color: var(--laranja);
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+.linha-conta-nome {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 14px;
+  transition: color 0.15s;
+}
+
+.linha-conta.pago .linha-conta-nome {
+  color: var(--texto-fraco);
+  text-decoration: line-through;
+}
+
+.linha-conta-valor {
+  font-family: var(--fonte-num);
+  font-variant-numeric: tabular-nums;
+  font-size: 14px;
+  color: var(--texto);
+  cursor: pointer;
+  padding: 5px 9px;
+  border-radius: 8px;
+  min-width: 40px;
+  text-align: right;
+  transition: background 0.1s;
+}
+
+.linha-conta-valor:active { background: var(--surface-3); }
+
+.rodape-contas { display: flex; justify-content: flex-start; }
+
 /* ---------- LOGIN ---------- */
 
 .login-overlay {
@@ -631,18 +835,6 @@ main {
   gap: 10px;
   width: 100%;
   justify-content: center;
-}
-
-.info-usuario {
-  display: none;
-  align-self: center;
-  font-size: 13px;
-  color: var(--texto-mudo);
-  margin-right: 4px;
-}
-
-@media (min-width: 720px) {
-  .info-usuario { display: inline; }
 }
 
 /* ---------- MODAIS ---------- */

@@ -10,7 +10,7 @@
 <link rel="apple-touch-icon" href="icon-192.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<link rel="stylesheet" href="style.css?v=15">
+<link rel="stylesheet" href="style.css?v=16">
 </head>
 <body>
 
@@ -34,44 +34,106 @@
 
 <div id="appRoot" hidden>
 
-<header class="topbar">
+<div class="topbar-mobile">
+  <button id="btnMenuMobile" class="icon-btn" aria-label="Abrir menu">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+  </button>
   <div class="brand">
     <span class="brand-mark" aria-hidden="true"></span>
     <span class="brand-nome">App Financial</span>
   </div>
-  <div class="topbar-acoes">
+</div>
+
+<div id="sidebarOverlay" class="sidebar-overlay" hidden></div>
+
+<nav id="sidebar" class="sidebar">
+  <div class="sidebar-topo">
+    <span class="brand-mark" aria-hidden="true"></span>
+    <span class="brand-nome">App Financial</span>
+  </div>
+
+  <div class="sidebar-nav">
+    <button type="button" class="nav-item" data-tela="grade" aria-current="page">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+      Grade anual
+    </button>
+    <button type="button" class="nav-item" data-tela="contas">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6.5l1.5 1.5L8 5"/><path d="M4 12.5l1.5 1.5L8 11"/><path d="M4 18.5l1.5 1.5L8 17"/><path d="M11.5 6h8.5M11.5 12h8.5M11.5 18h8.5"/></svg>
+      Contas a pagar
+    </button>
+  </div>
+
+  <div class="sidebar-rodape">
     <span id="infoUsuario" class="info-usuario"></span>
     <button id="btnLogout" class="icon-btn" aria-label="Sair">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 17l5-5-5-5M20 12H9M12 19H6a2 2 0 01-2-2V7a2 2 0 012-2h6"/></svg>
     </button>
   </div>
-</header>
+</nav>
 
-<div class="seletor-ano">
-  <button id="btnAnoAnterior" class="ano-nav" aria-label="Ano anterior">
-    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>
-  </button>
-  <div class="ano-atual">
-    <span class="ano-label" id="labelAno">2026</span>
-    <span class="ano-sub">ano fiscal</span>
+<div class="conteudo-app">
+
+<section id="telaGrade" class="tela">
+
+  <div class="seletor-ano">
+    <button id="btnAnoAnterior" class="ano-nav" aria-label="Ano anterior">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>
+    </button>
+    <div class="ano-atual">
+      <span class="ano-label" id="labelAno">2026</span>
+      <span class="ano-sub">ano fiscal</span>
+    </div>
+    <button id="btnAnoProximo" class="ano-nav" aria-label="Próximo ano">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg>
+    </button>
   </div>
-  <button id="btnAnoProximo" class="ano-nav" aria-label="Próximo ano">
-    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg>
-  </button>
+
+  <main>
+    <section id="resumoAno" class="resumo" hidden></section>
+
+    <div class="secao-cabecalho">
+      <h2 class="secao-titulo">Grade anual</h2>
+      <span class="secao-dica">clique numa célula para lançar</span>
+    </div>
+
+    <div id="gradeContainer" class="grade-wrapper">
+      <p class="estado-vazio">Carregando…</p>
+    </div>
+  </main>
+
+</section>
+
+<section id="telaContas" class="tela" hidden>
+
+  <div class="seletor-ano">
+    <button id="btnMesAnterior" class="ano-nav" aria-label="Mês anterior">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>
+    </button>
+    <div class="ano-atual">
+      <span class="ano-label" id="labelMesContas">Julho</span>
+      <span class="ano-sub" id="labelAnoContas">2026</span>
+    </div>
+    <button id="btnMesProximo" class="ano-nav" aria-label="Próximo mês">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg>
+    </button>
+  </div>
+
+  <main>
+    <section id="resumoContas" class="resumo" hidden></section>
+
+    <div class="secao-cabecalho">
+      <h2 class="secao-titulo">Contas a pagar</h2>
+      <span class="secao-dica">clique no valor pra editar</span>
+    </div>
+
+    <div id="contasContainer" class="contas-wrapper">
+      <p class="estado-vazio">Carregando…</p>
+    </div>
+  </main>
+
+</section>
+
 </div>
-
-<main>
-  <section id="resumoAno" class="resumo" hidden></section>
-
-  <div class="secao-cabecalho">
-    <h2 class="secao-titulo">Grade anual</h2>
-    <span class="secao-dica">clique numa célula para lançar</span>
-  </div>
-
-  <div id="gradeContainer" class="grade-wrapper">
-    <p class="estado-vazio">Carregando…</p>
-  </div>
-</main>
 
 </div>
 
@@ -102,9 +164,36 @@
   </form>
 </dialog>
 
+<!-- Modal: criar novo ano de contas a pagar -->
+<dialog id="modalNovoAnoContas">
+  <form id="formNovoAnoContas" method="dialog">
+    <h3>Criar contas de <span id="labelNovoAnoContas"></span></h3>
+
+    <label class="opcao-radio">
+      <input type="radio" name="modoNovoAnoContas" value="copiar" checked>
+      <span>
+        <strong>Copiar do ano anterior</strong>
+        <small>Traz os grupos, itens e valores já lançados.</small>
+      </span>
+    </label>
+    <label class="opcao-radio">
+      <input type="radio" name="modoNovoAnoContas" value="zerado">
+      <span>
+        <strong>Começar zerado</strong>
+        <small>Traz só os grupos e itens, sem valores nem status de pago.</small>
+      </span>
+    </label>
+
+    <div class="modal-botoes">
+      <button type="button" id="btnCancelarNovoAnoContas" class="btn-secundario">Cancelar</button>
+      <button type="submit" class="btn-primario">Criar</button>
+    </div>
+  </form>
+</dialog>
+
 <div id="toast" class="toast" hidden></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="app.js?v=15"></script>
+<script src="app.js?v=16"></script>
 </body>
 </html>

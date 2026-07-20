@@ -46,3 +46,12 @@ Decisão do usuário: o app ficaria público no GitHub Pages guardando dados fin
 Nome exibido no app trocado de "Financeiro"/"Controle Financeiro" para "App Financial": título da aba, marca no topbar, tela de login e `manifest.json` (nome do PWA). Puramente de nome/exibição, sem mudança de comportamento.
 
 No topbar, o indicador do usuário logado passou a mostrar o nome (`user_metadata.full_name`/`name` vindo do Google) em vez do e-mail, caindo pro e-mail só se o provedor não mandar nome.
+
+## Menu lateral + tela "Contas a pagar" (2026-07-20)
+
+O app deixa de ser uma tela única: a topbar fixa vira uma sidebar de navegação (drawer em telas estreitas, persistente em telas largas) com dois itens — "Grade anual" (a tela que já existia) e a nova "Contas a pagar".
+
+- **Contas a pagar**: checklist vertical de contas (água, luz, cartão...) agrupadas por categoria (ex: "Apartamento" com Condomínio, Água, Luz, Internet Vivo), cada item com checkbox de pago/não pago e um valor opcional — alguns itens têm valor controlado, outros só o status de pago, conforme pedido pelo usuário.
+- Navegação por **mês** (não por ano como a grade), já que contas são mensais. Ao cruzar pra um ano ainda sem grupos criados, mesmo fluxo de "criar ano" já usado na grade: copiar grupos/itens/valores do ano anterior ou começar zerado.
+- Modelo de dados novo no Supabase (`supabase_migration_contas.sql`): `bill_years` (registro de quais anos foram criados — necessário porque, ao contrário da grade, um ano de contas pode legitimamente começar com zero grupos, então não dava pra derivar "ano existe" só olhando se há grupos), `bill_groups`, `bill_items`, `bill_entries` (estado por mês: pago + valor opcional), todas com RLS por `user_id`.
+- Reaproveita a lógica e boa parte do CSS já existentes na grade (edição inline de valor, confirmação ao excluir, cache em memória por mês, padrão visual do card de resumo) em vez de introduzir padrões novos.
