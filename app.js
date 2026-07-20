@@ -31,6 +31,7 @@ const modalNovoAno = document.getElementById('modalNovoAno');
 const toast = document.getElementById('toast');
 
 const appRoot = document.getElementById('appRoot');
+const carregandoAuth = document.getElementById('carregandoAuth');
 const loginOverlay = document.getElementById('loginOverlay');
 const btnLoginGoogle = document.getElementById('btnLoginGoogle');
 const btnLogout = document.getElementById('btnLogout');
@@ -110,11 +111,13 @@ async function sair() {
 }
 
 function mostrarLogin() {
+  carregandoAuth.hidden = true;
   loginOverlay.hidden = false;
   appRoot.hidden = true;
 }
 
 function mostrarApp() {
+  carregandoAuth.hidden = true;
   loginOverlay.hidden = true;
   appRoot.hidden = false;
   infoUsuario.textContent = usuarioAtual.email || '';

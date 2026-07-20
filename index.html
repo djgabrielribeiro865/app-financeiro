@@ -10,12 +10,17 @@
 <link rel="apple-touch-icon" href="icon-192.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<link rel="stylesheet" href="style.css?v=11">
+<link rel="stylesheet" href="style.css?v=12">
 </head>
 <body>
 
+<!-- Tela de carregamento, mostrada enquanto verificamos se já existe sessão -->
+<div id="carregandoAuth" class="login-overlay">
+  <span class="brand-mark" aria-hidden="true"></span>
+</div>
+
 <!-- Tela de login -->
-<div id="loginOverlay" class="login-overlay">
+<div id="loginOverlay" class="login-overlay" hidden>
   <div class="login-caixa">
     <span class="brand-mark" aria-hidden="true"></span>
     <h1 class="brand-nome">Financeiro</h1>
@@ -100,6 +105,6 @@
 <div id="toast" class="toast" hidden></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="app.js?v=11"></script>
+<script src="app.js?v=12"></script>
 </body>
 </html>
