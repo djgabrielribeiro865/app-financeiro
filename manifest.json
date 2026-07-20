@@ -1,6 +1,6 @@
 {
-  "name": "Controle Financeiro",
-  "short_name": "Financeiro",
+  "name": "App Financial",
+  "short_name": "App Financial",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
