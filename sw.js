@@ -1,6 +1,6 @@
 // Ao publicar mudanças em style.css/app.js, incremente o número aqui E no
 // ?v= dos <link>/<script> do index.html (mantê-los iguais evita cache velho).
-const VERSAO_ASSETS = '10';
+const VERSAO_ASSETS = '11';
 const CACHE_NAME = 'controle-financeiro-v' + VERSAO_ASSETS;
 const ARQUIVOS_SHELL = [
   './',
@@ -38,10 +38,12 @@ self.addEventListener('fetch', (event) => {
   }
 
   // Network-first: sempre tenta buscar a versão mais nova primeiro.
-  // Só usa o cache se estiver offline. Assim, atualizações no GitHub
-  // aparecem no app automaticamente na próxima vez que abrir com internet.
+  // Só usa o cache se estiver offline. cache: 'no-store' ignora o cache
+  // HTTP do próprio navegador (o GitHub Pages manda max-age=600 no
+  // index.html), senão "network-first" viraria "cache do navegador
+  // primeiro" por até 10 minutos depois de cada deploy.
   event.respondWith(
-    fetch(event.request)
+    fetch(event.request, { cache: 'no-store' })
       .then((resposta) => {
         const copia = resposta.clone();
         caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copia));
