@@ -120,7 +120,8 @@ function mostrarApp() {
   carregandoAuth.hidden = true;
   loginOverlay.hidden = true;
   appRoot.hidden = false;
-  infoUsuario.textContent = usuarioAtual.email || '';
+  const meta = usuarioAtual.user_metadata || {};
+  infoUsuario.textContent = meta.full_name || meta.name || usuarioAtual.email || '';
 }
 
 // ---------- DADOS (SUPABASE) ----------

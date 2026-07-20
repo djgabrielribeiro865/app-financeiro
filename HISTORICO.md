@@ -44,3 +44,5 @@ Decisão do usuário: o app ficaria público no GitHub Pages guardando dados fin
 ## Rebranding para "App Financial" (2026-07-20)
 
 Nome exibido no app trocado de "Financeiro"/"Controle Financeiro" para "App Financial": título da aba, marca no topbar, tela de login e `manifest.json` (nome do PWA). Puramente de nome/exibição, sem mudança de comportamento.
+
+No topbar, o indicador do usuário logado passou a mostrar o nome (`user_metadata.full_name`/`name` vindo do Google) em vez do e-mail, caindo pro e-mail só se o provedor não mandar nome.
