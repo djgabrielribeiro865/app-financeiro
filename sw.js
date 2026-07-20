@@ -1,6 +1,6 @@
 // Ao publicar mudanças em style.css/app.js, incremente o número aqui E no
 // ?v= dos <link>/<script> do index.html (mantê-los iguais evita cache velho).
-const VERSAO_ASSETS = '8';
+const VERSAO_ASSETS = '9';
 const CACHE_NAME = 'controle-financeiro-v' + VERSAO_ASSETS;
 const ARQUIVOS_SHELL = [
   './',
@@ -31,8 +31,9 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
-  // Nunca cachear chamadas à API (Google Apps Script)
-  if (url.hostname.includes('script.google.com')) {
+  // Nunca interceptar chamadas de fora do próprio app: API do Supabase, CDN
+  // do supabase-js e o fluxo de login OAuth do Google.
+  if (url.origin !== self.location.origin) {
     return;
   }
 

@@ -1,7 +1,12 @@
+// ---------- SUPABASE ----------
+
+const SUPABASE_URL = 'https://ijwvzydvnfpyxhqihcew.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imlqd3Z6eWR2bmZweXhocWloY2V3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ1NjQ5NjgsImV4cCI6MjEwMDE0MDk2OH0.S7QxwxU5wx2CFvPf6Trnzp4h3gI91wKqPpE-YgzZ8FE';
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
 // ---------- ESTADO ----------
 
-let apiUrl = localStorage.getItem('apiUrl') || '';
-let apiToken = localStorage.getItem('apiToken') || '';
+let usuarioAtual = null;
 let anoAtual = new Date().getFullYear();
 let anosDisponiveis = [];
 let gradeAtual = null;
@@ -22,18 +27,28 @@ const btnAnoProximo = document.getElementById('btnAnoProximo');
 const SVG_SETA_DIREITA = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg>';
 const SVG_MAIS = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>';
 
-const modalConfig = document.getElementById('modalConfig');
 const modalNovoAno = document.getElementById('modalNovoAno');
 const toast = document.getElementById('toast');
+
+const appRoot = document.getElementById('appRoot');
+const loginOverlay = document.getElementById('loginOverlay');
+const btnLoginGoogle = document.getElementById('btnLoginGoogle');
+const btnLogout = document.getElementById('btnLogout');
+const infoUsuario = document.getElementById('infoUsuario');
 
 // ---------- INIT ----------
 
 window.addEventListener('DOMContentLoaded', () => {
-  if (!apiUrl || !apiToken) {
-    abrirModalConfig();
-  } else {
-    carregarTudo();
-  }
+  supabase.auth.onAuthStateChange((_event, session) => {
+    if (session) {
+      usuarioAtual = session.user;
+      mostrarApp();
+      carregarTudo();
+    } else {
+      usuarioAtual = null;
+      mostrarLogin();
+    }
+  });
 
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('sw.js').catch(() => {});
@@ -58,18 +73,9 @@ btnAnoProximo.addEventListener('click', () => {
   }
 });
 
-document.getElementById('btnConfig').addEventListener('click', abrirModalConfig);
+btnLoginGoogle.addEventListener('click', entrarComGoogle);
+btnLogout.addEventListener('click', sair);
 document.getElementById('btnCancelarNovoAno').addEventListener('click', () => modalNovoAno.close());
-document.getElementById('btnCancelarConfig').addEventListener('click', () => modalConfig.close());
-
-document.getElementById('formConfig').addEventListener('submit', () => {
-  apiUrl = document.getElementById('campoApiUrl').value.trim();
-  apiToken = document.getElementById('campoApiToken').value.trim();
-  localStorage.setItem('apiUrl', apiUrl);
-  localStorage.setItem('apiToken', apiToken);
-  mostrarToast('Conexão salva');
-  carregarTudo();
-});
 
 document.getElementById('formNovoAno').addEventListener('submit', async (e) => {
   const form = e.target;
@@ -78,58 +84,190 @@ document.getElementById('formNovoAno').addEventListener('submit', async (e) => {
   const anoOrigem = origemRaw === '' ? null : Number(origemRaw);
   const modo = document.querySelector('input[name="modoNovoAno"]:checked').value;
 
-  const ok = await chamarApiPost('criarAno', { anoOrigem, anoNovo, modo });
+  const ok = await criarAnoRemoto(anoOrigem, anoNovo, modo);
   if (ok) {
     mostrarToast(`Ano ${anoNovo} criado`);
     if (!anosDisponiveis.includes(anoNovo)) anosDisponiveis.push(anoNovo);
     anoAtual = anoNovo;
+    delete gradeCache[anoNovo];
     await carregarGrade();
   } else {
     mostrarToast('Erro ao criar o novo ano');
   }
 });
 
-// ---------- API ----------
+// ---------- AUTENTICAÇÃO ----------
 
-async function chamarApiGet(action, params = {}, silencioso = false) {
-  if (!apiUrl || !apiToken) return null;
-  const query = new URLSearchParams({ action, token: apiToken, ...params });
-  try {
-    const resp = await fetch(`${apiUrl}?${query.toString()}`);
-    const data = await resp.json();
-    if (data.erro) {
-      if (!silencioso) mostrarToast(data.erro);
-      return null;
-    }
-    return data;
-  } catch (err) {
-    if (!silencioso) mostrarToast('Falha de conexão com a API');
-    return null;
-  }
+async function entrarComGoogle() {
+  await supabase.auth.signInWithOAuth({
+    provider: 'google',
+    options: { redirectTo: window.location.origin + window.location.pathname }
+  });
 }
 
-async function chamarApiPost(action, extra = {}) {
-  if (!apiUrl || !apiToken) return false;
-  try {
-    const resp = await fetch(apiUrl, {
-      method: 'POST',
-      body: JSON.stringify({ action, token: apiToken, ...extra })
-    });
-    const data = await resp.json();
-    return !data.erro;
-  } catch (err) {
-    return false;
+async function sair() {
+  await supabase.auth.signOut();
+}
+
+function mostrarLogin() {
+  loginOverlay.hidden = false;
+  appRoot.hidden = true;
+}
+
+function mostrarApp() {
+  loginOverlay.hidden = true;
+  appRoot.hidden = false;
+  infoUsuario.textContent = usuarioAtual.email || '';
+}
+
+// ---------- DADOS (SUPABASE) ----------
+
+async function buscarAnos() {
+  const { data, error } = await supabase.from('years').select('year').order('year');
+  if (error) {
+    mostrarToast('Erro ao carregar anos');
+    return [];
   }
+  return data.map(r => r.year);
+}
+
+async function buscarGrade(ano) {
+  const { data: categorias, error: errCat } = await supabase
+    .from('categories')
+    .select('id, name, type')
+    .eq('year', ano);
+  if (errCat) {
+    mostrarToast('Erro ao carregar categorias');
+    return null;
+  }
+
+  const catIds = categorias.map(c => c.id);
+  let entries = [];
+  if (catIds.length) {
+    const { data, error: errEnt } = await supabase
+      .from('entries')
+      .select('category_id, month, value')
+      .in('category_id', catIds);
+    if (errEnt) {
+      mostrarToast('Erro ao carregar lançamentos');
+      return null;
+    }
+    entries = data;
+  }
+
+  const nomePorId = {};
+  const idPorNome = {};
+  categorias.forEach(c => {
+    nomePorId[c.id] = c.name;
+    idPorNome[c.name] = c.id;
+  });
+
+  const celulas = entries.map(e => ({
+    Categoria: nomePorId[e.category_id],
+    Mes: e.month,
+    Valor: e.value === null ? null : Number(e.value)
+  }));
+
+  return {
+    categorias: categorias.map(c => ({ Nome: c.name, Tipo: c.type })),
+    celulas,
+    _idPorNome: idPorNome
+  };
+}
+
+async function salvarCelulaRemota(categoria, mes, valor) {
+  const categoryId = gradeAtual._idPorNome[categoria];
+  if (!categoryId) return false;
+  const valorFinal = (valor === null || valor === undefined || valor === '') ? null : Number(valor);
+  const { error } = await supabase
+    .from('entries')
+    .upsert(
+      { category_id: categoryId, month: mes, value: valorFinal, updated_at: new Date().toISOString() },
+      { onConflict: 'category_id,month' }
+    );
+  return !error;
+}
+
+async function limparCelulaRemota(categoria, mes) {
+  const categoryId = gradeAtual._idPorNome[categoria];
+  if (!categoryId) return false;
+  const { error } = await supabase
+    .from('entries')
+    .delete()
+    .eq('category_id', categoryId)
+    .eq('month', mes);
+  return !error;
+}
+
+async function criarCategoriaRemota(nome, tipo, ano) {
+  const { data, error } = await supabase
+    .from('categories')
+    .insert({ year: ano, name: nome, type: tipo })
+    .select('id')
+    .single();
+  if (error) return null;
+  return data.id;
+}
+
+async function apagarCategoriaRemota(categoryId) {
+  const { error } = await supabase.from('categories').delete().eq('id', categoryId);
+  return !error;
+}
+
+async function criarAnoRemoto(anoOrigem, anoNovo, modo) {
+  const { error: errYear } = await supabase.from('years').insert({ year: anoNovo });
+  if (errYear) return false;
+
+  if (anoOrigem === null || anoOrigem === undefined) return true;
+
+  const { data: categoriasOrigem, error: errCat } = await supabase
+    .from('categories')
+    .select('id, name, type')
+    .eq('year', anoOrigem);
+  if (errCat) return false;
+  if (!categoriasOrigem.length) return true;
+
+  const novasCategorias = categoriasOrigem.map(c => ({ year: anoNovo, name: c.name, type: c.type }));
+  const { data: categoriasCriadas, error: errIns } = await supabase
+    .from('categories')
+    .insert(novasCategorias)
+    .select('id, name');
+  if (errIns) return false;
+
+  if (modo !== 'copiar') return true;
+
+  const idNovoPorNome = Object.fromEntries(categoriasCriadas.map(c => [c.name, c.id]));
+  const nomePorIdOrigem = Object.fromEntries(categoriasOrigem.map(c => [c.id, c.name]));
+  const catIdsOrigem = categoriasOrigem.map(c => c.id);
+
+  const { data: entriesOrigem, error: errEnt } = await supabase
+    .from('entries')
+    .select('category_id, month, value')
+    .in('category_id', catIdsOrigem);
+  if (errEnt) return false;
+
+  const novasEntries = entriesOrigem
+    .map(e => ({
+      category_id: idNovoPorNome[nomePorIdOrigem[e.category_id]],
+      month: e.month,
+      value: e.value
+    }))
+    .filter(e => e.category_id);
+
+  if (novasEntries.length) {
+    const { error: errInsEnt } = await supabase.from('entries').insert(novasEntries);
+    if (errInsEnt) return false;
+  }
+
+  return true;
 }
 
 // ---------- CARREGAMENTO ----------
 
 async function carregarTudo() {
-  const anos = await chamarApiGet('anos');
-  if (anos) {
-    anosDisponiveis = anos.anos || [];
-    anoAtual = anos.anoAtual || new Date().getFullYear();
-  }
+  const anos = await buscarAnos();
+  anosDisponiveis = anos;
+  anoAtual = anos.includes(ANO_CALENDARIO) ? ANO_CALENDARIO : (anos.length ? Math.max(...anos) : ANO_CALENDARIO);
   await carregarGrade();
 }
 
@@ -153,7 +291,7 @@ async function carregarGrade() {
     revalidarGrade(ano);
   } else {
     gradeContainer.innerHTML = '<p class="estado-vazio">Carregando…</p>';
-    const dados = await chamarApiGet('grade', { ano });
+    const dados = await buscarGrade(ano);
     if (!dados) {
       gradeContainer.innerHTML = '<p class="estado-vazio">Erro ao carregar. Confira a conexão.</p>';
       return;
@@ -171,10 +309,12 @@ async function carregarGrade() {
 // Busca a grade de novo em segundo plano e atualiza só se algo mudou de fato
 // e o usuário não está no meio de uma edição.
 async function revalidarGrade(ano) {
-  const dados = await chamarApiGet('grade', { ano }, true);
+  const dados = await buscarGrade(ano);
   if (!dados) return;
   if (anoAtual !== ano || gradeContainer.querySelector('input')) return;
-  if (JSON.stringify(dados) === JSON.stringify(gradeCache[ano])) return;
+  const { _idPorNome: _antigo, ...atual } = gradeCache[ano];
+  const { _idPorNome: _novo, ...novo } = dados;
+  if (JSON.stringify(atual) === JSON.stringify(novo)) return;
   gradeCache[ano] = dados;
   gradeAtual = dados;
   renderGrade(gradeAtual);
@@ -184,7 +324,7 @@ async function revalidarGrade(ano) {
 function prefetchVizinhos(ano) {
   [ano - 1, ano + 1].forEach(a => {
     if (anosDisponiveis.includes(a) && !gradeCache[a]) {
-      chamarApiGet('grade', { ano: a }, true).then(dados => {
+      buscarGrade(a).then(dados => {
         if (dados) gradeCache[a] = dados;
       });
     }
@@ -445,7 +585,7 @@ function ativarEdicaoCelula(td) {
     btnLimpar.textContent = '×';
     btnLimpar.addEventListener('mousedown', (e) => e.preventDefault());
     btnLimpar.addEventListener('click', async () => {
-      const ok = await chamarApiPost('limparCelula', { ano: anoAtual, mes, categoria });
+      const ok = await limparCelulaRemota(categoria, mes);
       if (ok) {
         removerCelulaCache(categoria, mes);
       } else {
@@ -474,7 +614,7 @@ function ativarEdicaoCelula(td) {
     if (cancelado) return;
     const bruto = input.value.trim();
     const valor = bruto === '' ? null : parseFloat(bruto);
-    const ok = await chamarApiPost('salvarCelula', { ano: anoAtual, mes, categoria, valor });
+    const ok = await salvarCelulaRemota(categoria, mes, valor);
     if (ok) {
       atualizarCelulaCache(categoria, mes, valor);
     } else {
@@ -488,10 +628,12 @@ function ativarEdicaoCelula(td) {
 
 async function excluirLinha(nome) {
   if (!confirm(`Excluir "${nome}"? Todos os valores já lançados nessa categoria neste ano também serão apagados. Essa ação não pode ser desfeita.`)) return;
-  const ok = await chamarApiPost('excluirCategoria', { nome, ano: anoAtual });
+  const categoryId = gradeAtual._idPorNome[nome];
+  const ok = await apagarCategoriaRemota(categoryId);
   if (ok) {
     gradeAtual.categorias = gradeAtual.categorias.filter(c => c.Nome !== nome);
     gradeAtual.celulas = gradeAtual.celulas.filter(c => c.Categoria !== nome);
+    delete gradeAtual._idPorNome[nome];
     renderGrade(gradeAtual);
   } else {
     mostrarToast('Erro ao excluir');
@@ -510,9 +652,10 @@ function ativarAdicionarLinha(btn) {
     if (e.key === 'Enter') {
       const nome = input.value.trim();
       if (nome) {
-        const ok = await chamarApiPost('criarCategoria', { dados: { Nome: nome, Tipo: tipo, Ano: anoAtual } });
-        if (ok) {
+        const id = await criarCategoriaRemota(nome, tipo, anoAtual);
+        if (id) {
           gradeAtual.categorias.push({ Nome: nome, Tipo: tipo });
+          gradeAtual._idPorNome[nome] = id;
         } else {
           mostrarToast('Erro ao adicionar');
         }
@@ -527,12 +670,6 @@ function ativarAdicionarLinha(btn) {
 }
 
 // ---------- MODAIS ----------
-
-function abrirModalConfig() {
-  document.getElementById('campoApiUrl').value = apiUrl;
-  document.getElementById('campoApiToken').value = apiToken;
-  modalConfig.showModal();
-}
 
 function abrirModalNovoAno(anoNovo, anoOrigem) {
   const form = document.getElementById('formNovoAno');
