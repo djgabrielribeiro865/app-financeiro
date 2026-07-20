@@ -1,8 +1,8 @@
 // ---------- SUPABASE ----------
 
-const SUPABASE_URL = 'https://ijwvzydvnfpyxhqihcew.supabase.co';
+const SUPABASE_URL = 'https://ijwvzydvnfpyxhqihcew.sb.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imlqd3Z6eWR2bmZweXhocWloY2V3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ1NjQ5NjgsImV4cCI6MjEwMDE0MDk2OH0.S7QxwxU5wx2CFvPf6Trnzp4h3gI91wKqPpE-YgzZ8FE';
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // ---------- ESTADO ----------
 
@@ -39,7 +39,7 @@ const infoUsuario = document.getElementById('infoUsuario');
 // ---------- INIT ----------
 
 window.addEventListener('DOMContentLoaded', () => {
-  supabase.auth.onAuthStateChange((_event, session) => {
+  sb.auth.onAuthStateChange((_event, session) => {
     if (session) {
       usuarioAtual = session.user;
       mostrarApp();
@@ -99,14 +99,14 @@ document.getElementById('formNovoAno').addEventListener('submit', async (e) => {
 // ---------- AUTENTICAÇÃO ----------
 
 async function entrarComGoogle() {
-  await supabase.auth.signInWithOAuth({
+  await sb.auth.signInWithOAuth({
     provider: 'google',
     options: { redirectTo: window.location.origin + window.location.pathname }
   });
 }
 
 async function sair() {
-  await supabase.auth.signOut();
+  await sb.auth.signOut();
 }
 
 function mostrarLogin() {
@@ -123,7 +123,7 @@ function mostrarApp() {
 // ---------- DADOS (SUPABASE) ----------
 
 async function buscarAnos() {
-  const { data, error } = await supabase.from('years').select('year').order('year');
+  const { data, error } = await sb.from('years').select('year').order('year');
   if (error) {
     mostrarToast('Erro ao carregar anos');
     return [];
@@ -132,7 +132,7 @@ async function buscarAnos() {
 }
 
 async function buscarGrade(ano) {
-  const { data: categorias, error: errCat } = await supabase
+  const { data: categorias, error: errCat } = await sb
     .from('categories')
     .select('id, name, type')
     .eq('year', ano);
@@ -144,7 +144,7 @@ async function buscarGrade(ano) {
   const catIds = categorias.map(c => c.id);
   let entries = [];
   if (catIds.length) {
-    const { data, error: errEnt } = await supabase
+    const { data, error: errEnt } = await sb
       .from('entries')
       .select('category_id, month, value')
       .in('category_id', catIds);
@@ -179,7 +179,7 @@ async function salvarCelulaRemota(categoria, mes, valor) {
   const categoryId = gradeAtual._idPorNome[categoria];
   if (!categoryId) return false;
   const valorFinal = (valor === null || valor === undefined || valor === '') ? null : Number(valor);
-  const { error } = await supabase
+  const { error } = await sb
     .from('entries')
     .upsert(
       { category_id: categoryId, month: mes, value: valorFinal, updated_at: new Date().toISOString() },
@@ -191,7 +191,7 @@ async function salvarCelulaRemota(categoria, mes, valor) {
 async function limparCelulaRemota(categoria, mes) {
   const categoryId = gradeAtual._idPorNome[categoria];
   if (!categoryId) return false;
-  const { error } = await supabase
+  const { error } = await sb
     .from('entries')
     .delete()
     .eq('category_id', categoryId)
@@ -200,7 +200,7 @@ async function limparCelulaRemota(categoria, mes) {
 }
 
 async function criarCategoriaRemota(nome, tipo, ano) {
-  const { data, error } = await supabase
+  const { data, error } = await sb
     .from('categories')
     .insert({ year: ano, name: nome, type: tipo })
     .select('id')
@@ -210,17 +210,17 @@ async function criarCategoriaRemota(nome, tipo, ano) {
 }
 
 async function apagarCategoriaRemota(categoryId) {
-  const { error } = await supabase.from('categories').delete().eq('id', categoryId);
+  const { error } = await sb.from('categories').delete().eq('id', categoryId);
   return !error;
 }
 
 async function criarAnoRemoto(anoOrigem, anoNovo, modo) {
-  const { error: errYear } = await supabase.from('years').insert({ year: anoNovo });
+  const { error: errYear } = await sb.from('years').insert({ year: anoNovo });
   if (errYear) return false;
 
   if (anoOrigem === null || anoOrigem === undefined) return true;
 
-  const { data: categoriasOrigem, error: errCat } = await supabase
+  const { data: categoriasOrigem, error: errCat } = await sb
     .from('categories')
     .select('id, name, type')
     .eq('year', anoOrigem);
@@ -228,7 +228,7 @@ async function criarAnoRemoto(anoOrigem, anoNovo, modo) {
   if (!categoriasOrigem.length) return true;
 
   const novasCategorias = categoriasOrigem.map(c => ({ year: anoNovo, name: c.name, type: c.type }));
-  const { data: categoriasCriadas, error: errIns } = await supabase
+  const { data: categoriasCriadas, error: errIns } = await sb
     .from('categories')
     .insert(novasCategorias)
     .select('id, name');
@@ -240,7 +240,7 @@ async function criarAnoRemoto(anoOrigem, anoNovo, modo) {
   const nomePorIdOrigem = Object.fromEntries(categoriasOrigem.map(c => [c.id, c.name]));
   const catIdsOrigem = categoriasOrigem.map(c => c.id);
 
-  const { data: entriesOrigem, error: errEnt } = await supabase
+  const { data: entriesOrigem, error: errEnt } = await sb
     .from('entries')
     .select('category_id, month, value')
     .in('category_id', catIdsOrigem);
@@ -255,7 +255,7 @@ async function criarAnoRemoto(anoOrigem, anoNovo, modo) {
     .filter(e => e.category_id);
 
   if (novasEntries.length) {
-    const { error: errInsEnt } = await supabase.from('entries').insert(novasEntries);
+    const { error: errInsEnt } = await sb.from('entries').insert(novasEntries);
     if (errInsEnt) return false;
   }
 
