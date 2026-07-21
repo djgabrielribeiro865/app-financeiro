@@ -744,8 +744,13 @@ main {
   text-overflow: ellipsis;
   white-space: nowrap;
   font-size: 14px;
-  transition: color 0.15s;
+  cursor: pointer;
+  padding: 5px 8px;
+  border-radius: 8px;
+  transition: background 0.1s, color 0.15s;
 }
+
+.linha-conta-nome:active { background: var(--surface-3); }
 
 .linha-conta.pago .linha-conta-nome {
   color: var(--texto-fraco);
@@ -753,6 +758,7 @@ main {
 }
 
 .linha-conta-valor {
+  display: inline-block;
   font-family: var(--fonte-num);
   font-variant-numeric: tabular-nums;
   font-size: 14px;
@@ -760,12 +766,17 @@ main {
   cursor: pointer;
   padding: 5px 9px;
   border-radius: 8px;
-  min-width: 40px;
+  min-width: 56px;
+  min-height: 1.2em;
   text-align: right;
   transition: background 0.1s;
 }
 
 .linha-conta-valor:active { background: var(--surface-3); }
+
+.linha-conta-valor .marca-sem-valor {
+  font-size: 12px;
+}
 
 .rodape-contas { display: flex; justify-content: flex-start; }
 

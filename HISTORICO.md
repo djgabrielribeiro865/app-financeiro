@@ -67,3 +67,10 @@ O botão "+" e o modal de criar contas mostravam só o **ano** (ex: "Criar conta
 De quebra, corrigido um bug relacionado: ao criar o ano a partir de um mês que não fosse dezembro (caso de bootstrap do ano atual, ainda sem nenhum grupo), o app resetava `mesContasAtual` pra Janeiro por engano — agora ele preserva corretamente o mês em que o usuário estava.
 
 O menu lateral também foi renomeado de "Contas a pagar" para **"Contas do mês"**, deixando explícito que é uma visão mensal (a pedido do usuário).
+
+## Corrige edição de valor e adiciona renomear item em "Contas do mês" (2026-07-20)
+
+Dois bugs reportados pelo usuário na tela nova:
+
+- **Não dava pra lançar o valor do item**: o campo de valor é um `<span>` (inline) vazio quando o item ainda não tem valor — `min-width` não tem efeito nenhum em elementos inline, então o span colapsava pra praticamente 0×0 e ficava impossível de clicar quando vazio. Corrigido com `display: inline-block` e um placeholder "+ valor" visível pra indicar que dá pra clicar ali.
+- **Não dava pra editar o nome de uma conta depois de criada**: essa funcionalidade simplesmente não existia — só tinha criar e excluir item. Adicionada edição inline por clique no nome (mesmo padrão da edição de valor), com `bill_items.name` atualizado via `renomearItemContaRemoto`.

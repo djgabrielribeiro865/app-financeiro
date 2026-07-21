@@ -890,6 +890,11 @@ async function apagarItemContaRemoto(itemId) {
   return !error;
 }
 
+async function renomearItemContaRemoto(itemId, nome) {
+  const { error } = await sb.from('bill_items').update({ name: nome }).eq('id', itemId);
+  return !error;
+}
+
 async function criarAnoContasRemoto(anoOrigem, anoNovo, modo) {
   const { error: errAno } = await sb.from('bill_years').insert({ year: anoNovo });
   if (errAno) return false;
@@ -1135,6 +1140,9 @@ function renderContas(dados) {
   contasContainer.querySelectorAll('.checkbox-pago').forEach(cb => {
     cb.addEventListener('change', () => alternarPago(cb.dataset.item, cb.checked));
   });
+  contasContainer.querySelectorAll('.linha-conta-nome').forEach(el => {
+    el.addEventListener('click', () => ativarEdicaoNomeConta(el));
+  });
   contasContainer.querySelectorAll('.linha-conta-valor').forEach(el => {
     el.addEventListener('click', () => ativarEdicaoValorConta(el));
   });
@@ -1164,10 +1172,12 @@ function grupoContasHtml(g) {
 
 function linhaContaHtml(item) {
   const pagoCls = item.pago ? ' pago' : '';
-  const valorTxt = typeof item.valor === 'number' ? formatarMoeda(item.valor) : '';
+  const valorTxt = typeof item.valor === 'number'
+    ? formatarMoeda(item.valor)
+    : '<span class="marca-sem-valor">+ valor</span>';
   return `<div class="linha-conta${pagoCls}">
     <input type="checkbox" class="checkbox-pago" data-item="${item.id}" ${item.pago ? 'checked' : ''}>
-    <span class="linha-conta-nome">${item.nome}</span>
+    <span class="linha-conta-nome" data-item="${item.id}">${item.nome}</span>
     <span class="linha-conta-valor" data-item="${item.id}">${valorTxt}</span>
     <button type="button" class="btn-excluir-linha" data-item="${item.id}" aria-label="Excluir item">×</button>
   </div>`;
@@ -1196,6 +1206,50 @@ async function alternarPago(itemId, pago) {
     mostrarToast('Erro ao atualizar');
   }
   renderContas(contasAtual);
+}
+
+function ativarEdicaoNomeConta(el) {
+  if (el.querySelector('input')) return;
+
+  const itemId = el.dataset.item;
+  const item = encontrarItemConta(itemId);
+  const nomeAtual = item.nome;
+
+  el.innerHTML = '';
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.className = 'input-nova-linha';
+  input.value = nomeAtual;
+  el.appendChild(input);
+  input.focus();
+  input.select();
+
+  let cancelado = false;
+
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      input.blur();
+    } else if (e.key === 'Escape') {
+      cancelado = true;
+      renderContas(contasAtual);
+    }
+  });
+
+  input.addEventListener('blur', async () => {
+    if (cancelado) return;
+    const novoNome = input.value.trim();
+    if (!novoNome || novoNome === nomeAtual) {
+      renderContas(contasAtual);
+      return;
+    }
+    const ok = await renomearItemContaRemoto(itemId, novoNome);
+    if (ok) {
+      atualizarItemContaCache(itemId, { nome: novoNome });
+    } else {
+      mostrarToast('Erro ao renomear');
+    }
+    renderContas(contasAtual);
+  });
 }
 
 function ativarEdicaoValorConta(el) {
