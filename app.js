@@ -1166,6 +1166,10 @@ function grupoContasHtml(g) {
     </div>`;
   g.itens.forEach(i => { html += linhaContaHtml(i); });
   html += `<div class="linha-item-adicionar"><button type="button" class="btn-add-linha btn-add-item" data-grupo="${g.id}">+ Novo item</button></div>`;
+  if (g.itens.length) {
+    const total = g.itens.reduce((soma, i) => soma + (typeof i.valor === 'number' ? i.valor : 0), 0);
+    html += `<div class="grupo-contas-total"><span>Total</span><span>${formatarMoeda(total)}</span></div>`;
+  }
   html += '</div>';
   return html;
 }

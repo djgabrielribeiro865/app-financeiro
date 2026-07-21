@@ -778,6 +778,25 @@ main {
   font-size: 12px;
 }
 
+.grupo-contas-total {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  border-top: 1px solid var(--border-soft);
+  background: var(--surface-2);
+  font-family: var(--fonte-num);
+  font-variant-numeric: tabular-nums;
+  font-size: 12px;
+  font-weight: 650;
+  color: var(--texto-mudo);
+}
+
+.grupo-contas-total span:last-child {
+  font-size: 13px;
+  color: var(--texto);
+}
+
 .rodape-contas { display: flex; justify-content: flex-start; }
 
 /* ---------- LOGIN ---------- */
